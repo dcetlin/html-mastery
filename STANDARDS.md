@@ -13,7 +13,7 @@ Before applying specific patterns, understand the qualities these standards opti
 2. **Structured navigation.** Sections are numbered taxonomically (§1, §2, §1.1) so a reader can orient quickly and reference a section by ID ("the §3.2 framing").
 3. **Clipboard-first feedback loop.** For document-class artifacts, the reader annotates inline; "Copy Comments" assembles their notes in `[§1] text | [§2] text` format for pasting back wherever the conversation lives.
 4. **Self-contained.** No external fonts, no CDN dependencies except D3.js (from `https://d3js.org/d3.v7.min.js`) when a concept graph is present. All CSS and JS inline. A finished artifact is a single file.
-5. **Interactive vocabulary/concept graphs.** When a document introduces a taxonomy or vocabulary (concepts with relationships), a D3.js force-directed network is the canonical way to render it — established form, not a novelty to justify each time.
+5. **Interactive concept graphs (optional).** When a document introduces a taxonomy with relationships, an interactive graph (e.g. a D3.js force-directed network) can help where a static diagram won't. The D3 graph included here is an *illustrative example* of wiring up D3 — adapt it, replace it, or skip it; it is not a prescribed or inherently high-value visualization.
 6. **Version metadata.** Include `<meta name="doc-version" content="X.Y">` and `<meta name="doc-updated" content="ISO8601 timestamp">` in the head.
 
 ---
@@ -330,9 +330,9 @@ function copyComments() {
 
 ---
 
-## 6. D3.js Vocabulary / Concept Network (Document-class)
+## 6. D3.js Concept Graph (optional example)
 
-When a document introduces a taxonomy or vocabulary with defined relationships between concepts, use a D3.js force-directed graph. This is the canonical approach. Do not substitute a static diagram or table when relationships between concepts are the point.
+Using D3.js for concept relationships is a nice option when a static diagram won't capture the topology. **The implementation below is an example of integrating D3 — illustrative, not load-bearing.** It's a reasonable starting point, not a canonical or high-value visualization on its own; adapt the node model and styling to your data, swap in a different layout, or leave it out entirely.
 
 ### When to use
 
@@ -896,7 +896,7 @@ Before finalizing any artifact, confirm:
 - [ ] Version meta tags present (`doc-version`, `doc-updated`)
 - [ ] Section IDs are taxonomic (§1, §2, §1.1) not technical slugs
 - [ ] For document-class: clipboard comment widget present and `sections[]` matches actual sections
-- [ ] For document-class with taxonomy: D3.js network present (not a static diagram)
+- [ ] (Optional) If you used the D3 example, you adapted it to your own data rather than shipping it as-is
 - [ ] All JS is inline; no external CSS except the D3 CDN link
 - [ ] Delivery URL resolved from config, not hardcoded
 - [ ] For dashboard-class: filter bar, status badges, action buttons tested

@@ -1,7 +1,7 @@
 """
 Theme toggle component — light/dark mode toggle with localStorage persistence.
 
-Extracted from html-interface/STANDARDS.md §3.
+Extracted from STANDARDS.md §3.
 Phase 1: replicates existing behavior exactly.
 """
 
@@ -83,7 +83,7 @@ def render(config: dict) -> str:
     mode="js-toggle": fixed button, top-right, localStorage persistence.
     mode="media-query": @media prefers-color-scheme only, no button.
 
-    Full spec: html-interface/STANDARDS.md §3.
+    Full spec: STANDARDS.md §3.
     Position: injected as first child of <body>.
     """
     mode = config.get("mode", "js-toggle")

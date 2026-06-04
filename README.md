@@ -24,7 +24,7 @@ The goal: **a new artifact should never start from a blank file.**
 | [`htmlgen/`](./htmlgen/) | The Python toolkit — renderer, editor, components, conventions, template registry. |
 | [`htmlgen/renderer.py`](./htmlgen/renderer.py) | Compile a JSON content manifest + template → one self-contained `.html` file. |
 | [`htmlgen/editor.py`](./htmlgen/editor.py) | DOM-aware, token-efficient editor: target nodes by selector and apply edits without rewriting the file. |
-| [`htmlgen/components/`](./htmlgen/components/) | Reusable primitives: theme toggle, clipboard widget, D3 vocabulary network, vocab tooltips. |
+| [`htmlgen/components/`](./htmlgen/components/) | Reusable primitives: theme toggle, clipboard widget, vocab tooltips, and a D3 vocabulary network (an illustrative D3 example, not load-bearing). |
 | [`htmlgen/conventions.yaml`](./htmlgen/conventions.yaml) | The design tokens (palette, typography, layout) the renderer reads. |
 | [`htmlgen/templates/`](./htmlgen/templates/) | Template registry: `document-class`, `dashboard-class`, `spec-document`. |
 | [`STANDARDS.md`](./STANDARDS.md) | The canon: artifact classes, tokens, components, checklist. |

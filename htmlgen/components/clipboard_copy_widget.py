@@ -1,7 +1,7 @@
 """
 Clipboard copy widget component — per-section comment inputs with Copy Comments button.
 
-Extracted from html-interface/STANDARDS.md §5.
+Extracted from STANDARDS.md §5.
 Phase 1: replicates existing behavior exactly.
 
 Includes isSecureContext guard + execCommand fallback per STANDARDS.md §13.
@@ -151,7 +151,7 @@ def render(config: dict) -> str:
     """
     Returns the clipboard comment widget HTML+CSS+JS fragment.
 
-    Full visual spec: html-interface/STANDARDS.md §5.
+    Full visual spec: STANDARDS.md §5.
     Position: bottom of document body, above footer.
 
     Includes isSecureContext guard + execCommand fallback for non-HTTPS contexts.

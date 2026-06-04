@@ -1,8 +1,10 @@
 """
-D3 vocabulary network component — force-directed concept graph with 3-tier node model.
+D3 vocabulary network component — force-directed concept graph with a 3-tier node model.
 
-Extracted from html-interface/STANDARDS.md §6.
-Phase 1: replicates existing behavior exactly.
+NOTE: This is an illustrative example of integrating D3, not a load-bearing or
+canonical visualization. Treat it as a starting point — adapt the node model and
+styling to your data, swap in a different layout, or skip it entirely. See
+STANDARDS.md §6.
 """
 
 COMPONENT_ID = "d3-vocabulary-network"
@@ -319,7 +321,7 @@ def render(config: dict) -> str:
     """
     Returns D3.js force-directed vocabulary network HTML+CSS+JS fragment.
 
-    3-tier node model (register, param, cross). Full spec: html-interface/STANDARDS.md §6.
+    3-tier node model (register, param, cross). Full spec: STANDARDS.md §6.
     Requires D3 CDN script tag — renderer must inject:
     <script src="https://d3js.org/d3.v7.min.js"></script> before </body>.
     """
