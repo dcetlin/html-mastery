@@ -1113,9 +1113,98 @@ The Mermaid is the source of truth for the graph structure. The SVG is the prese
 
 This section covers how to edit large HTML artifacts without destroying them. It is the section nobody else has.
 
-### 6.1 Section-Based Editing
+### 6.0 Session Initialization
 
-Large HTML artifacts (1500+ lines) cannot be edited as monolithic files by LLMs. The editing unit is the section.
+Before making any edit to a large HTML artifact, establish baselines. Without these, you cannot detect silent corruption.
+
+```bash
+# 1. Check version
+grep -n 'doc-version\|version.*v[0-9]' file.html | head -3
+
+# 2. Line count baseline
+wc -l file.html
+
+# 3. Div balance baseline
+grep -c '<div' file.html && grep -c '</div>' file.html
+
+# 4. Structure orientation
+grep -n 'top-section\|data-track\|section-num\|id="' file.html | head -20
+```
+
+If v8.29 was 3269 lines with 564 divs, and after your edits it's 3200 lines with 550 divs, something was silently dropped. The baselines let you catch this before it compounds.
+
+### 6.1 Editing Workflows by Scale
+
+Large HTML artifacts (1500+ lines) cannot be edited as monolithic files by LLMs. Choose the right workflow for the edit scale:
+
+| Edit type | Scale | Tool | Risk |
+|---|---|---|---|
+| Content update in identified section | <30 lines changed | Read + Edit tool | Low |
+| CSS-only addition | Any size | Edit tool (unique anchor) or Python inject | Low |
+| New section with HTML + CSS + JS | 50–500 lines | Python three-point injection | Medium |
+| Section restructure (nesting changes) | Any size | Python replacement script | High |
+| Full track/tab system addition | 200+ lines | Python injection + JS handler updates | High |
+
+**The key heuristic:** If the edit changes the div nesting depth of a section, it is a rebuild, not a surgical edit. Surgical edits on nesting-depth changes are the #1 source of div-balance corruption.
+
+#### Small edits (<30 lines, nesting unchanged)
+
+1. `grep -n` to find the anchor
+2. Read the target region
+3. Edit tool with a carefully chosen unique `old_string`
+4. Validate
+5. Browser preview
+
+#### Medium edits (new subsection or section rewrite)
+
+1. `grep -n` to find boundaries
+2. Write the new fragment to `/tmp/fragment.html`
+3. Write a Python injection or replacement script
+4. Run the script
+5. Validate
+6. Browser preview
+
+#### Large additions (new track, new tab system, new interactive feature)
+
+1. Write CSS to `/tmp/new-styles.css`
+2. Write HTML to `/tmp/new-section.html`
+3. Write JS to `/tmp/new-handlers.js`
+4. Write a Python script that injects all three at their respective anchor points
+5. Run the script
+6. Validate
+7. Browser preview
+8. Version bump
+
+### 6.1.1 Anchor Conventions
+
+Before any edit, the first command is always `grep`:
+
+```bash
+grep -n 'id="ts-2"\|section-num\|top-section' file.html | head -20
+```
+
+This is not optional — it is the primary method for orienting within a large file.
+
+**Deliberate anchors.** During initial file creation, insert HTML comments at key boundaries:
+
+```html
+<!-- ============================= M1a TRACK ============================= -->
+<!-- LiqAddr 1: Deposit page — per-chain dropdown -->
+<!-- Static 2: Send (same as LiqAddr) -->
+```
+
+These comments are the API contract between the initial author and future editors. They are what `grep` finds. Without them, you search for `<div class="slide" data-track="liqaddr" data-step="2">` which is less readable and more fragile.
+
+**Injection-point markers.** For files that will receive repeated additions, mark the injection points explicitly:
+
+```html
+<!-- INJECT:new-sections-here -->
+<div class="top-section" id="ts-next">
+```
+
+### 6.1.2 Section-Based Extract/Replace
+
+The original section-based workflow still applies for edits within existing sections:
 
 **Workflow:**
 1. Identify the section to edit (by `id` attribute or `§` number)
@@ -1164,6 +1253,15 @@ Non-negotiable. After every structural edit, verify:
 
 A validation failure after edit means the edit introduced corruption. Revert and redo.
 
+**Browser preview (equally non-negotiable).** Validation catches structural corruption. Browser preview catches *visual* corruption — CSS changes that are structurally valid but visually wrong. A column that's suddenly full-width, a color that's wrong in light mode, a tooltip positioned off-screen. After every structural edit:
+
+```bash
+open file.html          # macOS
+xdg-open file.html      # Linux
+```
+
+Both validation and browser preview are required. Validation without preview misses visual regression. Preview without validation misses structural corruption that renders correctly by accident.
+
 ### 6.3 Transform Scripts
 
 For mechanical changes across a large file (CSS injection, class renaming, div wrapping), write a Python or shell transform script. Do not do mechanical changes by hand-editing.
@@ -1211,7 +1309,61 @@ if __name__ == '__main__':
     main()
 ```
 
-**Multi-point injection:** When adding a new feature (CSS + HTML + JS) to a monolithic HTML file, write a Python script with three surgical insertions: (1) CSS block before the `@media` queries in `<style>`, (2) HTML content between existing section divs, (3) JS handlers before the closing `</script>` tag. Always validate div balance after injection.
+#### Multi-Point Injection (the dominant pattern for large additions)
+
+When adding a new feature (CSS + HTML + JS) to a monolithic HTML file, write a Python script with three surgical insertions. This is how 80% of real production edits happen.
+
+**Template:**
+
+```python
+#!/usr/bin/env python3
+"""Inject: [describe what this adds]."""
+import sys
+
+HTML_PATH = sys.argv[1]
+
+with open(HTML_PATH, 'r') as f:
+    html = f.read()
+
+# 1. CSS injection (before @media or before </style>)
+CSS_ANCHOR = "@media (max-width: 900px) {"
+with open("/tmp/css-fragment.css", 'r') as f:
+    css = f.read()
+assert CSS_ANCHOR in html, "CSS anchor not found"
+html = html.replace(CSS_ANCHOR, css + "\n" + CSS_ANCHOR, 1)
+print("CSS injected")
+
+# 2. HTML injection (between known section boundaries)
+SECTION_ANCHOR = '<div class="top-section" id="ts-next">'
+with open("/tmp/section.html", 'r') as f:
+    section = f.read()
+assert SECTION_ANCHOR in html, "Section anchor not found"
+html = html.replace(SECTION_ANCHOR, section + "\n" + SECTION_ANCHOR, 1)
+print("HTML section injected")
+
+# 3. JS injection (before closing </script>)
+JS_ANCHOR = "</script>"
+with open("/tmp/js-fragment.js", 'r') as f:
+    js = f.read()
+# Use rfind to target the LAST </script> tag
+idx = html.rfind(JS_ANCHOR)
+assert idx != -1, "JS anchor not found"
+html = html[:idx] + js + "\n" + html[idx:]
+print("JS injected")
+
+with open(HTML_PATH, 'w') as f:
+    f.write(html)
+print("Done.")
+```
+
+**Why this is the dominant pattern:**
+- The Edit tool's `old_string` matching breaks on HTML entities (`&amp;`, `&#8212;`) and whitespace variation
+- html-tool.sh's extract→replace cycle doesn't handle *additions* (no existing section to extract)
+- Python scripts are traceable — you can read the script to see exactly what changed
+- Each injection point has different failure modes: CSS is safest (additive), HTML is most dangerous (div balance), JS is moderate (syntax errors break the whole page)
+- The script should validate after injection, not just at the end
+
+**Naming convention:** `inject-[feature].py`, `rebuild-[section].py`, `add-[component].py`. The script name documents what it does.
 
 ### 6.4 Anti-Patterns
 
@@ -1226,6 +1378,20 @@ These fail reliably. Do not attempt them.
 **Opening/closing tag pairing in transforms.** When converting one element type to another (e.g., tabs → cards), the transform must add BOTH the opening and closing tags. A transform that adds `<div class="card-body">` but relies on an existing `</div>` that was closing a different element breaks nesting silently and cascades through the entire document.
 
 **Compressed taxonomic codes as primary UI.** Using short codes (C2, E1, T5) as the visible element with tooltips for meaning reads as noise to anyone who doesn't already hold the taxonomy. Plain-language names must always be visible; codes are secondary metadata. Design principle: expand, don't compress.
+
+**"Helpful reorganization" of a large file.** A new editing session sees that sections could be reordered, CSS classes renamed, or functions regrouped. Catastrophic on a 3000+ line file — creates a diff touching every line, making it impossible to verify what actually changed. Rule: never reorganize a large HTML file. Only make targeted, traceable changes.
+
+**Consolidating "duplicate" CSS.** After 15 editing sessions, CSS has near-duplicate rules. Consolidation frequently breaks styling because "duplicates" have subtle differences (`var(--text2)` vs `var(--text3)`) or target different specificity contexts. Rule: tolerate CSS redundancy in long-lived files. Only consolidate when you can visually verify every affected section.
+
+**Reformatting whitespace.** Re-indenting or adding line breaks for "readability" creates enormous diffs that obscure real changes and increase risk of accidentally modifying content. Rule: preserve existing whitespace patterns. New sections match the indentation of adjacent sections; never reformat existing content.
+
+**Refactoring inline JavaScript.** Seeing repeated patterns and extracting shared functions changes call sites throughout the file, risking breakage of interactive features that were working. Rule: inline JS in HTML artifacts is append-only. New functions are fine. Refactoring existing functions is not, unless you can test every interactive feature.
+
+**Silent anchor destruction.** An edit removes or renames an `id` attribute that other parts of the file reference — CSS `#id` selectors, JS `getElementById` calls, internal `href="#..."` links. Failures are invisible until someone clicks a link or triggers a feature. Rule: before modifying any `id` attribute, `grep` the entire file for references to that ID.
+
+### The Append-Only Discipline
+
+The anti-patterns above share a root cause: treating a long-lived HTML file as a codebase to maintain, rather than a document to extend. The correct mental model is **append-only**: existing content is load-bearing infrastructure. You add to it; you don't reshape it. New CSS goes at the end of the `<style>` block. New JS goes at the end of the `<script>` block. New sections go between existing sections. Nothing gets moved, renamed, or consolidated unless the change is surgically targeted and fully tested.
 
 ### 6.5 Substance vs. Presentation
 
@@ -1257,9 +1423,36 @@ Why not dual-canon for everything? Maintaining parallel markdown copies of prese
 1. Run validation (div balance, structural integrity) before any version bump.
 2. Increment minor version for content changes, major for structural changes.
 3. Update the `doc-version` and `doc-updated` meta tags.
-4. Record the transition in a commit message or log: old version → new version, line count, div count.
+4. Update the **footer text** if the document has one: `"Settlement Architecture v8.30 — Updated 2026-06-07"` — visible in the rendered document.
+5. Record the transition in a commit message or log: old version → new version, **line count, div count.**
+
+**Corruption detection via baselines.** At each version, record the line count and div count. If v8.29 was 3269 lines with 564 divs and v8.30 is 3200 lines with 550 divs, something was silently dropped. This is the cheapest and most effective corruption detection.
+
+**Version history as HTML comment (optional but recommended for long-lived files):**
+
+```html
+<!-- VERSION LOG
+  v8.28: 3269 lines, 564 divs. 9 sections. 2026-06-06.
+  v8.30: 3927 lines, 564 divs. Added §1.75 LP Experience. 2026-06-07.
+  v9.0:  restructured tracks. 2026-06-08.
+-->
+```
 
 ---
+
+### 6.8 CSS Scoping for Long-Lived Files
+
+When adding section N+1 to a file that already has N sections with their own CSS:
+
+**Class name collision.** A new section that introduces `.card` or `.header` styles bleeds into existing sections. Two practices:
+- **Prefix all new classes** with the section abbreviation: `lpx-step`, `lpx-mockup`, `sys-json`, `wire-tag`
+- **Scope via ancestor ID:** `#section-15 .card { ... }` — only applies within that section
+
+**CSS ordering.** New CSS injected before `</style>` goes after all existing rules, winning specificity ties by cascade order. This is usually fine but causes unexpected overrides when the new section uses generic class names. If in doubt, prefix.
+
+**Media query interaction.** If the file has an existing `@media` block, new responsive rules must go inside it — not create a duplicate `@media` block. Duplicate `@media` blocks work but are confusing and create maintenance ambiguity about which one to edit.
+
+**Color tokens.** New sections should always use the existing CSS custom properties (`var(--accent)`, `var(--text-muted)`, etc.) rather than hard-coding hex values. This ensures light/dark mode works automatically. Exception: inline styles on wireframe-class content that intentionally uses a fixed light palette (the "app screen" being mocked up).
 
 ## 7. Rendering Pipeline
 
