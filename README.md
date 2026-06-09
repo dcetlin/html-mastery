@@ -15,9 +15,10 @@ This repo contains:
   tooling. Design system, component patterns, SVG conventions, and the
   production methodology for maintaining large documents (4,000+ lines) across
   many editing sessions.
-- **[`gallery/`](./gallery/)** — exemplary artifacts you can open in your
-  browser. Each demonstrates the full capability set while being useful as a
-  starting template.
+- **[`gallery/`](./gallery/)** — example artifacts you can open in your browser.
+  These demonstrate what the spec *can* produce, not what artifacts *must* look
+  like. Aesthetic choices are the gallery's, not the spec's. Use them as
+  starting points, not as visual mandates.
 - **[`tools/`](./tools/)** — two lightweight tools that earn their keep in
   practice: a structural validator and a section-based editor.
 
@@ -28,7 +29,8 @@ No build step. No dependencies beyond a browser. No pip install.
 | Path | What it is |
 |------|------------|
 | [`STANDARD.md`](./STANDARD.md) | The product. Design system, components, SVG conventions, production methodology, anti-patterns. |
-| [`gallery/decision-document.html`](./gallery/decision-document.html) | Exemplary decision document: interactive calculator, SVG flows, option cards, tabs, step navigator. |
+| [`gallery/decision-document.html`](./gallery/decision-document.html) | Decision document demonstrating core components: calculator, SVG flows, option cards, tabs, step navigator. |
+| [`gallery/complex-decision-document.html`](./gallery/complex-decision-document.html) | Production-scale decision document (2,235 lines): coverage matrices, question registry, split-panel comparisons, convergence confidence, provider-branching calculator. |
 | [`tools/html-tool.sh`](./tools/html-tool.sh) | Section-based HTML editor. Extract, replace, inject, validate, preview. The forcing function that makes section-based editing the default. |
 | [`tools/validate.py`](./tools/validate.py) | Structural integrity checker. Div balance, depth tracking, unclosed tags. Run after every edit. |
 | [`LICENSE`](./LICENSE) | MIT. |

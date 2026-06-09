@@ -1924,7 +1924,7 @@ For mechanical changes across a large file (CSS injection, class renaming, div w
 ```python
 #!/usr/bin/env python3
 """Transform: describe what this changes."""
-import re, sys
+import os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -1934,7 +1934,6 @@ def transform(html):
     return html
 
 def main():
-    import os
     html = open(sys.argv[1]).read()
     html = transform(html)
     open(sys.argv[2], 'w').write(html)
@@ -2940,6 +2939,16 @@ Before publishing any artifact, verify every applicable item.
 - [ ] Filter bar filters actually work (toggle visibility, show empty state)
 - [ ] Status badges use correct color class (`.bd`, `.bp`, `.bf`, `.ba`, `.bc`)
 - [ ] Action buttons have valid targets
+
+### Presentation-class
+
+- [ ] Track tabs present and switch slide groups correctly
+- [ ] Slide navigation with step dots (done/active/future states)
+- [ ] Keyboard navigation: left/right arrows change slides within active track
+- [ ] Slides are full-viewport (`100vh`, `overflow: hidden` on body)
+- [ ] Split-pane layout renders on both themes (if used)
+- [ ] Browser chrome mockups have correct URL display (if used)
+- [ ] Comparison annotation tags visible and correctly classified (if used)
 
 ### SVG diagrams
 

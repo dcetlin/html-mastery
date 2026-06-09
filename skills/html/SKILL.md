@@ -27,13 +27,25 @@ Before acting, identify which mode applies:
 
 ## Mode: Create
 
-1. Decide artifact class: **Document-class** (reports, design docs, decisions, audits) or **Dashboard-class** (data dashboards, monitoring, interactive tools).
-2. Start from the gallery example or the skeleton in STANDARD.md. Never start from a blank file.
+1. Decide artifact class: **Document-class** (reports, design docs, decisions, audits), **Dashboard-class** (data dashboards, monitoring, interactive tools), or **Presentation-class** (slide-based storyboards, journey walkthroughs, experience comparisons).
+2. Start from the gallery example or the skeleton in STANDARD.md §8. Never start from a blank file.
 3. Include all required features for the class:
    - Document-class: light/dark toggle, taxonomic section IDs, comment widget, version metadata
    - Dashboard-class: light/dark toggle (if readable sections), filter bar, status badges
+   - Presentation-class: track tabs, slide navigation with step dots, keyboard nav (arrow keys), full-viewport slides, version metadata
 4. Use the full color token system (dark-first).
 5. Validate the output: `python3 tools/validate.py <file>`
+
+---
+
+## Environment setup
+
+Before using `html-tool.sh`, set the target file:
+```bash
+export HTML_TOOL_FILE=my-document.html
+```
+
+The authoritative validator is `python3 tools/validate.py <file>` (three-pass: div balance + block elements + id closure). `html-tool.sh validate` delegates to it when Python is available.
 
 ---
 
@@ -120,6 +132,19 @@ chromium --headless \
 - `--force-device-scale-factor=2` for retina quality
 - Always use absolute paths with `file://` protocol
 - For macOS: `/opt/homebrew/bin/chromium`
+
+---
+
+## Advanced operator patterns (STANDARD.md §6.9)
+
+For intensive editing sessions (10+ edits), these patterns prevent corruption:
+
+- **`replace_once(html, old, new, label)`** — validates exactly one match before replacing. Use in Python transform scripts instead of bare `str.replace()`. See §6.9 for the helper function.
+- **Bottom-up editing** — when making multiple interactive edits, work from highest line numbers first so earlier targets stay stable.
+- **Factual claim sweep** — after changing any fact (price, status, name), `grep -n "old_value"` to find all echoes. Update every instance.
+- **Card layer synchronization** — when changing a card's status, update all 4 layers: CSS class, badge, info box, SVG annotations.
+- **`.bak` recovery** — `html-tool.sh replace` creates `.bak` files. If validation fails: restore from `.bak`, don't fix forward.
+- **Pre-publish sweep** — validate + grep for stale claims + version check + card sync + browser preview (both themes) + interactive feature check.
 
 ---
 
