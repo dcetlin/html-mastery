@@ -104,12 +104,15 @@ SYNOPSIS
   ./html-tool.sh <command> [args...]
 
 COMMANDS
-  sections              List all elements with id attributes (tag, class, line range)
+  sections [--hierarchical]
+                        List all elements with id attributes (tag, class, line range).
+                        --hierarchical (-H): indent children under parents by nesting depth.
   stats                 Show line counts per id-bearing section
   extract <id>          Extract a section by its id attribute value
   replace <id> <file>   Replace a section's content with contents of <file>
   inject-svg <id> <svg> Replace a container's inner content with an SVG file
-  validate              Check div balance, max depth, depth-never-negative
+  validate              Check HTML structure (delegates to validate.py when available,
+                        falls back to inline div-balance check otherwise)
   preview               Open the HTML file in the default browser
   help                  Show this help message
 
@@ -121,6 +124,7 @@ EXAMPLES
   export HTML_TOOL_FILE=./my-dashboard.html
 
   ./html-tool.sh sections
+  ./html-tool.sh sections --hierarchical
   ./html-tool.sh extract main-content
   ./html-tool.sh stats
   ./html-tool.sh replace sidebar updated-sidebar.html
@@ -131,7 +135,21 @@ HELPTEXT
 }
 
 cmd_sections() {
+  local hierarchical=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --hierarchical|-H) hierarchical=1; shift ;;
+      *) die "Unknown option for sections: $1" ;;
+    esac
+  done
+
   require_file
+
+  if [[ $hierarchical -eq 1 ]]; then
+    cmd_sections_hierarchical
+    return
+  fi
+
   printf '%-6s  %-40s  %-30s  %s\n' "TAG" "ID" "CLASS" "LINES"
   printf '%-6s  %-40s  %-30s  %s\n' "---" "--" "-----" "-----"
 
@@ -162,6 +180,95 @@ cmd_sections() {
     fi
 
     printf '%-6s  %-40s  %-30s  %s\n' "$tag" "$elem_id" "${cls:--}" "$line_range"
+  done
+}
+
+# Hierarchical sections view: indents child sections under parents based on
+# div nesting depth. Scans the file line-by-line tracking depth so each
+# id-bearing element gets an accurate nesting level.
+cmd_sections_hierarchical() {
+  require_file
+
+  # Collect all id-bearing elements with their div depth at the point they appear.
+  # We scan the file once, tracking cumulative div depth.
+  local depth=0
+  local lineno=0
+  local entries=()
+
+  while IFS= read -r line; do
+    lineno=$((lineno + 1))
+
+    # Count opens/closes on this line. Opens are counted before we check for ids
+    # so the element's own opening tag contributes to its depth.
+    local opens closes
+    opens=$(count_pattern '<div\b' "$line")
+    closes=$(count_pattern '</div>' "$line")
+
+    # Check for id attribute before updating depth for closes
+    # (the element belongs at the depth after its own open)
+    depth=$((depth + opens))
+
+    if echo "$line" | grep -q 'id="[^"]*"'; then
+      local elem_id tag cls
+      elem_id=$(echo "$line" | grep -o 'id="[^"]*"' | head -1 | sed 's/id="//;s/"//')
+      tag=$(echo "$line" | grep -o '<[a-zA-Z][a-zA-Z0-9]*' | head -1 | sed 's/<//')
+      cls=$(echo "$line" | grep -o 'class="[^"]*"' | head -1 | sed 's/class="//;s/"//' || true)
+
+      if [[ -n "$elem_id" && -n "$tag" ]]; then
+        # Store entry as depth|lineno|tag|id|class
+        entries+=("${depth}|${lineno}|${tag}|${elem_id}|${cls:--}")
+      fi
+    fi
+
+    depth=$((depth - closes))
+    if [[ $depth -lt 0 ]]; then
+      depth=0
+    fi
+  done < "$HTML_FILE"
+
+  # Find the minimum depth to use as baseline for indentation
+  local min_depth=999
+  for entry in "${entries[@]}"; do
+    local d
+    d=$(echo "$entry" | cut -d'|' -f1)
+    if [[ $d -lt $min_depth ]]; then
+      min_depth=$d
+    fi
+  done
+
+  # Print with indentation
+  printf '%-60s  %-6s  %s\n' "ID (hierarchical)" "TAG" "LINES"
+  printf '%-60s  %-6s  %s\n' "------------------" "---" "-----"
+
+  for entry in "${entries[@]}"; do
+    local d elem_lineno tag elem_id cls
+    d=$(echo "$entry" | cut -d'|' -f1)
+    elem_lineno=$(echo "$entry" | cut -d'|' -f2)
+    tag=$(echo "$entry" | cut -d'|' -f3)
+    elem_id=$(echo "$entry" | cut -d'|' -f4)
+    cls=$(echo "$entry" | cut -d'|' -f5)
+
+    local indent_level=$((d - min_depth))
+    local indent=""
+    local i=0
+    while [[ $i -lt $indent_level ]]; do
+      indent="${indent}  "
+      i=$((i + 1))
+    done
+
+    # Compute line range for container elements
+    local line_range="line $elem_lineno"
+    if [[ "$tag" == "div" || "$tag" == "section" || "$tag" == "article" || "$tag" == "main" || "$tag" == "aside" || "$tag" == "nav" || "$tag" == "header" || "$tag" == "footer" ]]; then
+      local end_line
+      end_line=$(find_closing_div "$elem_lineno" 2>/dev/null || true)
+      if [[ -n "$end_line" ]]; then
+        local count=$((end_line - elem_lineno + 1))
+        line_range="${elem_lineno}-${end_line} (${count} lines)"
+      fi
+    fi
+
+    local display_id="${indent}${elem_id}"
+    printf '%-60s  %-6s  %s\n' "$display_id" "$tag" "$line_range"
   done
 }
 
@@ -317,6 +424,16 @@ cmd_inject_svg() {
 
 cmd_validate() {
   require_file
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local validator="${script_dir}/validate.py"
+
+  if [[ -f "$validator" ]] && command -v python3 &>/dev/null; then
+    python3 "$validator" "$HTML_FILE"
+    return $?
+  fi
+
+  # Fallback: inline bash validation if validate.py or Python not available
   printf '=== Div Validation: %s ===\n' "$HTML_FILE"
 
   local total_opens total_closes
@@ -366,6 +483,7 @@ cmd_validate() {
 
   if [[ $has_issues -eq 0 ]]; then
     printf 'All checks passed — divs are balanced.\n'
+    printf '(Install validate.py alongside this script for deeper structural checks.)\n'
   fi
 
   return $has_issues
@@ -392,7 +510,7 @@ main() {
 
   case "$cmd" in
     help|--help|-h)     cmd_help ;;
-    sections|sec|ls)    cmd_sections ;;
+    sections|sec|ls)    cmd_sections "$@" ;;
     stats|st)           cmd_stats ;;
     extract|ex|get)     cmd_extract "$@" ;;
     replace|rep|set)    cmd_replace "$@" ;;

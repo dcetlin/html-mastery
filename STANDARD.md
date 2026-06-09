@@ -141,6 +141,44 @@ Every artifact is one of two classes. The class determines required features.
 
 ---
 
+### 2.3 Presentation-class
+
+**Use for:** slide-based presentations, storyboards, journey walkthroughs, experience comparisons, multi-track demos.
+
+Full-viewport artifacts where content is organized into **tracks** (slide groups) and **slides** (individual steps within a track). The user navigates between tracks via tabs and between slides via step dots or arrow keys. Slides typically use a split-pane layout: one side shows a UI mockup (often with browser chrome), the other shows system-level context (API calls, state changes, webhook payloads).
+
+Derived from production experience: LP Experience Storyboard (~2,237 lines, 9 tracks, 31 slides).
+
+| Feature | Required? |
+|---------|-----------|
+| Light/dark toggle (3.1) | Yes |
+| Track tabs (3.11 adapted) | Yes |
+| Slide navigation with step dots (3.12 adapted) | Yes |
+| Keyboard navigation (left/right arrows) | Yes |
+| Full-viewport slides | Yes |
+| Version meta tags | Yes |
+| Split-pane layout (mockup + system panel) | Optional (common) |
+| Browser chrome mockups (URL bar, back button) | Optional (common) |
+| Comparison annotation tags (NEW/SAME/BETTER/REGRESSION) | Optional |
+| Entry-point sub-toggles within tracks | Optional |
+| JSON syntax highlighting in system panel | Optional |
+| Taxonomic section IDs (3.2) | No (tracks + slide numbers replace section hierarchy) |
+| Clipboard comment widget (3.4) | No (interaction surface is navigation, not annotation) |
+| Status badges (3.5) | Optional (for comparison tags) |
+| Stat cards (3.6) | No |
+| Tables (3.7) | Optional (for system panel data) |
+| Section cards (3.8) | No (slides replace cards) |
+| Collapsible sections (3.10) | No (conflicts with full-viewport slide model) |
+| Filter bars | No |
+
+**Key distinctions from Document-class and Dashboard-class:**
+
+- **Viewport model.** Documents scroll; dashboards scroll within cards; presentations fill the viewport per-slide. The `<body>` should suppress scroll. Each slide is `100vh`.
+- **Navigation model.** Tracks are the top-level grouping (analogous to tabs but semantically distinct: each track is a self-contained narrative). Slides within a track are sequential steps. Arrow keys advance within the current track.
+- **Content model.** Each slide typically presents a paired view: what the user sees (UI mockup) alongside what the system does (API/state). This split-pane is the dominant layout but not mandatory -- single-pane slides (e.g., a title slide or summary) are valid.
+
+---
+
 ## 3. Components
 
 ### 3.1 Light/Dark Toggle
@@ -913,6 +951,610 @@ function fmtDuration(secs) {
 
 ---
 
+### 3.22 Coverage/Capability Matrix
+
+A requirements-by-provider matrix with check/cross/pending marks and a gap-risk column. Used to evaluate providers against a structured set of requirements (jurisdictions, features, compliance items, coverage timelines). A summary row of color-coded callout boxes quantifies uncovered items across all providers.
+
+**When to use:** Comparing providers against jurisdictions, features, compliance requirements, or coverage timelines where gap visibility drives the decision.
+
+**CSS:**
+```css
+.cov-matrix { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.cov-matrix th {
+  text-align: left; padding: 6px 8px; color: var(--text3);
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid var(--border);
+}
+.cov-matrix td {
+  padding: 6px 8px; border-bottom: 1px solid var(--border);
+  vertical-align: top; text-align: center;
+}
+.cov-matrix td:first-child { text-align: left; font-weight: 500; }
+.cov-matrix td:last-child { text-align: left; }
+.cov-matrix tr:last-child td { border-bottom: none; }
+
+.cov-yes { color: #34d399; }
+.cov-no { color: #f87171; }
+.cov-pending { color: #fbbf24; }
+
+.cov-risk-high {
+  color: #f87171; font-weight: 600; font-size: .75rem;
+}
+.cov-risk-low {
+  color: var(--text3); font-size: .75rem;
+}
+.cov-risk-med {
+  color: #fbbf24; font-weight: 600; font-size: .75rem;
+}
+
+.cov-summary {
+  display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;
+}
+.cov-callout {
+  flex: 1; min-width: 140px; padding: 10px 14px;
+  border-radius: 8px; font-size: .78rem; font-weight: 600;
+}
+.cov-callout .cov-callout-n {
+  font-size: 1.3rem; font-weight: 700; display: block; margin-bottom: 2px;
+}
+.cov-callout .cov-callout-l {
+  font-size: .65rem; text-transform: uppercase; letter-spacing: .04em;
+  font-weight: 600;
+}
+.cov-callout-full {
+  background: rgba(52, 211, 153, .1); color: #34d399;
+  border: 1px solid rgba(52, 211, 153, .25);
+}
+.cov-callout-gap {
+  background: rgba(248, 113, 113, .1); color: #f87171;
+  border: 1px solid rgba(248, 113, 113, .25);
+}
+.cov-callout-cond {
+  background: rgba(251, 191, 36, .1); color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, .25);
+}
+```
+
+**HTML:**
+```html
+<table class="cov-matrix">
+  <thead>
+    <tr>
+      <th>Requirement</th>
+      <th>Provider A</th>
+      <th>Provider B</th>
+      <th>Provider C</th>
+      <th>Gap Risk</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>US ACH</td>
+      <td class="cov-yes">&#10003;</td>
+      <td class="cov-yes">&#10003;</td>
+      <td class="cov-no">&#10007;</td>
+      <td class="cov-risk-low">Covered by A+B</td>
+    </tr>
+    <tr>
+      <td>EU SEPA</td>
+      <td class="cov-no">&#10007;</td>
+      <td class="cov-pending">&#9207;</td>
+      <td class="cov-yes">&#10003;</td>
+      <td class="cov-risk-med">B timeline unconfirmed</td>
+    </tr>
+    <tr>
+      <td>SOC 2 Type II</td>
+      <td class="cov-yes">&#10003;</td>
+      <td class="cov-no">&#10007;</td>
+      <td class="cov-no">&#10007;</td>
+      <td class="cov-risk-high">Single-provider dependency</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="cov-summary">
+  <div class="cov-callout cov-callout-full">
+    <span class="cov-callout-n">5</span>
+    <span class="cov-callout-l">Fully Covered</span>
+  </div>
+  <div class="cov-callout cov-callout-gap">
+    <span class="cov-callout-n">2</span>
+    <span class="cov-callout-l">Uncovered Gaps</span>
+  </div>
+  <div class="cov-callout cov-callout-cond">
+    <span class="cov-callout-n">1</span>
+    <span class="cov-callout-l">Conditional</span>
+  </div>
+</div>
+```
+
+---
+
+### 3.23 Question/Decision Registry
+
+Prioritized list of open items grouped by urgency tier. Each tier has a count badge and a colored header. Rows carry a left-border color indicating resolution state: red for open, yellow for partial/in-progress, green for resolved. Tracks questions across sessions in a living decision document.
+
+**When to use:** Tracking open questions, blocking decisions, and follow-ups across sessions in a decision or analysis document.
+
+**CSS:**
+```css
+.qreg-tier {
+  margin-bottom: 20px;
+}
+.qreg-tier-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.qreg-tier-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 700; color: #fff;
+}
+.qreg-tier-urgent .qreg-tier-badge { background: #ef4444; }
+.qreg-tier-urgent .qreg-tier-label { color: #ef4444; }
+.qreg-tier-follow .qreg-tier-badge { background: #eab308; }
+.qreg-tier-follow .qreg-tier-label { color: #eab308; }
+.qreg-tier-nice .qreg-tier-badge { background: var(--text3); }
+.qreg-tier-nice .qreg-tier-label { color: var(--text3); }
+
+.qreg-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.qreg-table th {
+  text-align: left; padding: 5px 8px; color: var(--text3);
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid var(--border);
+}
+.qreg-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top;
+}
+.qreg-table tr:last-child td { border-bottom: none; }
+
+.qreg-table tr { border-left: 3px solid transparent; }
+.qreg-open { border-left-color: #ef4444; }
+.qreg-partial { border-left-color: #eab308; }
+.qreg-resolved { border-left-color: #34d399; }
+
+.qreg-num {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: .72rem; color: var(--text3); font-weight: 600;
+}
+```
+
+**HTML:**
+```html
+<div class="qreg-tier qreg-tier-urgent">
+  <div class="qreg-tier-header">
+    <span class="qreg-tier-label">Urgent / Blocking</span>
+    <span class="qreg-tier-badge">3</span>
+  </div>
+  <table class="qreg-table">
+    <thead>
+      <tr><th>#</th><th>Question</th><th>Scope</th><th>Blocks</th><th>Status</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr class="qreg-open">
+        <td class="qreg-num">Q1</td>
+        <td>What is the settlement cutoff time?</td>
+        <td>Operations</td>
+        <td>Payment flow design</td>
+        <td><span class="badge bf">Open</span></td>
+        <td>Treasury</td>
+      </tr>
+      <tr class="qreg-partial">
+        <td class="qreg-num">Q2</td>
+        <td>Multi-currency account structure?</td>
+        <td>Architecture</td>
+        <td>Data model</td>
+        <td><span class="badge bp">Partial</span></td>
+        <td>Engineering</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="qreg-tier qreg-tier-follow">
+  <div class="qreg-tier-header">
+    <span class="qreg-tier-label">Fast Follow</span>
+    <span class="qreg-tier-badge">2</span>
+  </div>
+  <table class="qreg-table">
+    <thead>
+      <tr><th>#</th><th>Question</th><th>Scope</th><th>Blocks</th><th>Status</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr class="qreg-resolved">
+        <td class="qreg-num">Q4</td>
+        <td>Webhook retry policy?</td>
+        <td>Integration</td>
+        <td>Error handling</td>
+        <td><span class="badge bd">Resolved</span></td>
+        <td>Platform</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="qreg-tier qreg-tier-nice">
+  <div class="qreg-tier-header">
+    <span class="qreg-tier-label">Nice to Have</span>
+    <span class="qreg-tier-badge">1</span>
+  </div>
+  <table class="qreg-table">
+    <thead>
+      <tr><th>#</th><th>Question</th><th>Scope</th><th>Blocks</th><th>Status</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr class="qreg-open">
+        <td class="qreg-num">Q6</td>
+        <td>Custom branding on hosted pages?</td>
+        <td>UX</td>
+        <td>Nothing</td>
+        <td><span class="badge bf">Open</span></td>
+        <td>Design</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+```
+
+---
+
+### 3.24 Split-Panel Comparison
+
+Side-by-side panels for comparing two states, providers, or journeys. Each panel has a header with an optional badge and a content area. Optional comparison annotation tags (see 3.28) classify individual elements. Optional system annotations appear in muted text. Grid layout ensures equal width at all viewport sizes.
+
+**When to use:** Before/after UX flows, Provider A vs Provider B experience comparisons, current-state vs future-state.
+
+**CSS:**
+```css
+.split-panel {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 640px) {
+  .split-panel { grid-template-columns: 1fr; }
+}
+
+.split-pane {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.split-pane-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; font-size: 13px; font-weight: 700;
+  color: var(--text); border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.split-pane-header .badge { flex-shrink: 0; }
+.split-pane-body {
+  padding: 14px 16px; font-size: .82rem; color: var(--text);
+  line-height: 1.6;
+}
+.split-pane-body ol,
+.split-pane-body ul {
+  padding-left: 18px; margin: 0;
+}
+.split-pane-body li { margin-bottom: 6px; }
+
+.split-annotation {
+  font-size: 11px; color: var(--text3); font-style: italic;
+  margin-top: 6px;
+}
+```
+
+**HTML:**
+```html
+<div class="split-panel">
+  <div class="split-pane">
+    <div class="split-pane-header">
+      Current Flow <span class="badge bp">Before</span>
+    </div>
+    <div class="split-pane-body">
+      <ol>
+        <li>User enters amount <span class="cmp-tag cmp-same">SAME</span></li>
+        <li>Redirect to bank portal <span class="cmp-tag cmp-regression">REGRESSION</span></li>
+        <li>Manual confirmation email</li>
+      </ol>
+      <div class="split-annotation">Source: production audit 2025-12</div>
+    </div>
+  </div>
+  <div class="split-pane">
+    <div class="split-pane-header">
+      Proposed Flow <span class="badge bd">After</span>
+    </div>
+    <div class="split-pane-body">
+      <ol>
+        <li>User enters amount <span class="cmp-tag cmp-same">SAME</span></li>
+        <li>Inline bank auth <span class="cmp-tag cmp-better">BETTER</span></li>
+        <li>Real-time webhook confirmation <span class="cmp-tag cmp-new">NEW</span></li>
+      </ol>
+      <div class="split-annotation">Based on Provider B sandbox testing</div>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+### 3.25 Convergence Confidence Display
+
+Displays working direction, supporting evidence, confidence percentage, and "what could change" for decisions that are converging but not yet final. Confidence is color-coded: green above 80%, yellow 60-80%, red below 60%. A left-border accent reinforces the confidence level. A separate "Confirmed" section below shows fully resolved items.
+
+**When to use:** Living decision documents where decisions converge over sessions and readers need to see how firm each direction is.
+
+**CSS:**
+```css
+.conv-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.conv-table th {
+  text-align: left; padding: 6px 8px; color: var(--text3);
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid var(--border);
+}
+.conv-table td {
+  padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: top;
+}
+.conv-table tr:last-child td { border-bottom: none; }
+
+.conv-table tr { border-left: 3px solid transparent; }
+.conv-high { border-left-color: #34d399; }
+.conv-med { border-left-color: #eab308; }
+.conv-low { border-left-color: #ef4444; }
+
+.conv-pct {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 700; font-size: .82rem;
+}
+.conv-pct-high { color: #34d399; }
+.conv-pct-med { color: #eab308; }
+.conv-pct-low { color: #ef4444; }
+
+.conv-evidence {
+  font-size: .75rem; color: var(--text2); line-height: 1.5;
+}
+.conv-change {
+  font-size: .75rem; color: var(--text3); font-style: italic;
+}
+
+.conv-confirmed {
+  margin-top: 16px; padding: 12px 16px;
+  background: rgba(52, 211, 153, .06);
+  border: 1px solid rgba(52, 211, 153, .2);
+  border-radius: 8px;
+}
+.conv-confirmed-header {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #34d399; margin-bottom: 8px;
+}
+.conv-confirmed-item {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: .8rem; margin-bottom: 4px;
+}
+.conv-confirmed-item .conv-check { color: #34d399; font-weight: 700; }
+```
+
+**HTML:**
+```html
+<table class="conv-table">
+  <thead>
+    <tr>
+      <th>Direction</th>
+      <th>Evidence</th>
+      <th>Confidence</th>
+      <th>What Could Change</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="conv-high">
+      <td><strong>Use Provider B for EU payments</strong></td>
+      <td class="conv-evidence">Sandbox tested; pricing confirmed in writing; SOC 2 cert reviewed</td>
+      <td><span class="conv-pct conv-pct-high">90%</span></td>
+      <td class="conv-change">Contract negotiation could surface volume minimums</td>
+    </tr>
+    <tr class="conv-med">
+      <td><strong>Single ledger, multi-currency</strong></td>
+      <td class="conv-evidence">Eng prototype works; accounting team verbal approval</td>
+      <td><span class="conv-pct conv-pct-med">70%</span></td>
+      <td class="conv-change">Regulatory review of sub-account structure</td>
+    </tr>
+    <tr class="conv-low">
+      <td><strong>Real-time FX conversion</strong></td>
+      <td class="conv-evidence">Provider claims API exists; no documentation found</td>
+      <td><span class="conv-pct conv-pct-low">40%</span></td>
+      <td class="conv-change">May need batch FX if API is not production-ready</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="conv-confirmed">
+  <div class="conv-confirmed-header">Confirmed Decisions</div>
+  <div class="conv-confirmed-item">
+    <span class="conv-check">&#10003;</span>
+    <span>USD as base currency for all ledger entries</span>
+  </div>
+  <div class="conv-confirmed-item">
+    <span class="conv-check">&#10003;</span>
+    <span>Webhook-first integration pattern (no polling)</span>
+  </div>
+</div>
+```
+
+---
+
+### 3.26 Data Provenance Badges
+
+Confidence markers for vendor and external claims. Orthogonal to task-status badges (3.5) -- these classify the provenance of a claim, not the status of a work item. Five tiers from highest to lowest confidence.
+
+**When to use:** Marking pricing, capability, and timeline claims in comparison tables and decision documents where the reliability of vendor-provided information matters.
+
+**Tiers:**
+
+| Class | Symbol | Meaning |
+|-------|--------|---------|
+| `.prov-confirmed` | &#10003; | Confirmed in writing (contract, docs, email) |
+| `.prov-verbal` | &#9684; | Claimed verbally, not in writing |
+| `.prov-pre-ga` | &#9888;&#65039; | Documented but pre-GA / not production |
+| `.prov-coming` | &#9203; | Mentioned as coming, not documented |
+| `.prov-absent` | &#10060; | Not mentioned by vendor |
+
+**CSS:**
+```css
+.prov {
+  display: inline-block; padding: 2px 7px; border-radius: 10px;
+  font-size: .68rem; font-weight: 600; white-space: nowrap;
+  vertical-align: middle;
+}
+.prov-confirmed {
+  color: #34d399; background: rgba(52, 211, 153, .12);
+  border: 1px solid rgba(52, 211, 153, .25);
+}
+.prov-verbal {
+  color: #60a5fa; background: rgba(96, 165, 250, .12);
+  border: 1px solid rgba(96, 165, 250, .25);
+}
+.prov-pre-ga {
+  color: #fbbf24; background: rgba(251, 191, 36, .12);
+  border: 1px solid rgba(251, 191, 36, .25);
+}
+.prov-coming {
+  color: #a78bfa; background: rgba(167, 139, 250, .12);
+  border: 1px solid rgba(167, 139, 250, .25);
+}
+.prov-absent {
+  color: #f87171; background: rgba(248, 113, 113, .12);
+  border: 1px solid rgba(248, 113, 113, .25);
+}
+```
+
+**HTML usage:**
+```html
+<!-- Inline in table cells or prose -->
+<span class="prov prov-confirmed">&#10003; Confirmed</span>
+<span class="prov prov-verbal">&#9684; Verbal</span>
+<span class="prov prov-pre-ga">&#9888;&#65039; Pre-GA</span>
+<span class="prov prov-coming">&#9203; Coming Soon</span>
+<span class="prov prov-absent">&#10060; Absent</span>
+
+<!-- Example: inside a coverage matrix cell -->
+<td><span class="prov prov-verbal">&#9684; Verbal</span></td>
+
+<!-- Example: inline in prose -->
+<p>Real-time FX is <span class="prov prov-coming">&#9203; Coming Soon</span> per the Provider B sales call (2025-11-14). No API documentation exists.</p>
+```
+
+**Usage guidance:** Provenance badges can be composed with coverage marks (3.22) and comparison tags (3.28). In a coverage matrix, replace bare checkmarks with provenance badges when the reliability of the claim is decision-relevant. In prose, use inline to qualify specific vendor assertions. Do not use for internal team decisions -- those are task-status badges (3.5).
+
+---
+
+### 3.27 JSON Code Block
+
+Syntax-highlighted code display for API payloads, webhook examples, and configuration snippets. Dark background with color classes for structural elements. Monospace font, horizontal scroll for long lines.
+
+**When to use:** System panels, API documentation sections, webhook payload examples, configuration display in technical decision documents.
+
+**CSS:**
+```css
+.json-block {
+  background: #0d1117; border: 1px solid #30363d;
+  border-radius: 8px; padding: 14px 16px; margin-bottom: 12px;
+  overflow-x: auto; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: .78rem; line-height: 1.6; color: #c9d1d9;
+  tab-size: 2;
+}
+.json-block .jk { color: #7ee787; }           /* keys */
+.json-block .js { color: #79c0ff; }           /* string values */
+.json-block .jn { color: #56d4dd; }           /* numbers */
+.json-block .jb { color: #ff7b72; }           /* booleans, null */
+.json-block .jc { color: #8b949e; font-style: italic; } /* comments */
+.json-block .jp { color: #c9d1d9; }           /* punctuation: {} [] , : */
+
+.json-block-label {
+  font-size: .65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text3); margin-bottom: 6px;
+}
+```
+
+**HTML:**
+```html
+<div class="json-block-label">Webhook Payload</div>
+<pre class="json-block"><code><span class="jp">{</span>
+  <span class="jk">"event"</span><span class="jp">:</span> <span class="js">"payment.completed"</span><span class="jp">,</span>
+  <span class="jk">"amount"</span><span class="jp">:</span> <span class="jn">15000</span><span class="jp">,</span>
+  <span class="jk">"currency"</span><span class="jp">:</span> <span class="js">"USD"</span><span class="jp">,</span>
+  <span class="jk">"idempotency_key"</span><span class="jp">:</span> <span class="js">"ik_abc123"</span><span class="jp">,</span>
+  <span class="jk">"metadata"</span><span class="jp">:</span> <span class="jp">{</span>
+    <span class="jk">"source"</span><span class="jp">:</span> <span class="js">"api"</span><span class="jp">,</span>
+    <span class="jk">"retry_count"</span><span class="jp">:</span> <span class="jn">0</span><span class="jp">,</span>
+    <span class="jk">"is_test"</span><span class="jp">:</span> <span class="jb">false</span>
+  <span class="jp">}</span>
+<span class="jp">}</span></code></pre>
+```
+
+**JS (optional -- auto-highlight from raw JSON):**
+```js
+function highlightJson(elementId) {
+  var el = document.getElementById(elementId);
+  if (!el) return;
+  var raw = el.textContent;
+  var highlighted = raw
+    .replace(/("(?:[^"\\]|\\.)*")\s*:/g, '<span class="jk">$1</span><span class="jp">:</span>')
+    .replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span class="js">$1</span>')
+    .replace(/:\s*(\d+\.?\d*)/g, ': <span class="jn">$1</span>')
+    .replace(/:\s*(true|false|null)/g, ': <span class="jb">$1</span>')
+    .replace(/([{}\[\],])/g, '<span class="jp">$1</span>')
+    .replace(/\/\/(.*?)$/gm, '<span class="jc">//$1</span>');
+  el.innerHTML = highlighted;
+}
+```
+
+**Usage note:** For static documents, prefer hand-marked spans (the HTML example above) for precision. Use the JS auto-highlighter only when rendering dynamic or user-provided JSON where manual markup is impractical.
+
+---
+
+### 3.28 Comparison Annotation Tags
+
+Inline pill-style badges for classifying elements in a comparison. Small, unobtrusive, and designed to sit inline with text or list items. Four classifications: NEW, SAME, BETTER, REGRESSION.
+
+**When to use:** Any before/after or option-A vs option-B comparison where individual elements need classification. Compose with Split-Panel Comparison (3.24), tables (3.7), or inline prose.
+
+**CSS:**
+```css
+.cmp-tag {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  vertical-align: middle; white-space: nowrap; margin-left: 4px;
+}
+.cmp-new {
+  color: #1e40af; background: #dbeafe;
+}
+.cmp-same {
+  color: #6b7280; background: #f3f4f6;
+}
+.cmp-better {
+  color: #065f46; background: #d1fae5;
+}
+.cmp-regression {
+  color: #92400e; background: #fef3c7;
+}
+```
+
+**HTML usage:**
+```html
+<!-- Inline in a list -->
+<li>Webhook confirmation <span class="cmp-tag cmp-new">NEW</span></li>
+<li>Amount entry <span class="cmp-tag cmp-same">SAME</span></li>
+<li>Auth latency 200ms (was 800ms) <span class="cmp-tag cmp-better">BETTER</span></li>
+<li>No fallback routing <span class="cmp-tag cmp-regression">REGRESSION</span></li>
+
+<!-- Inline in a table cell -->
+<td>Real-time settlement <span class="cmp-tag cmp-new">NEW</span></td>
+
+<!-- Inline in prose -->
+<p>The proposed flow introduces inline bank auth <span class="cmp-tag cmp-better">BETTER</span> but removes the manual override path <span class="cmp-tag cmp-regression">REGRESSION</span>.</p>
+```
+
+**Light mode note:** The background colors are chosen to work in both dark and light themes. In dark mode, the text colors provide sufficient contrast against the light backgrounds. No `[data-theme]` overrides needed.
+
+
 ## 4. Data Injection
 
 ### 4.1 The D_JSON Pattern
@@ -1454,6 +2096,147 @@ When adding section N+1 to a file that already has N sections with their own CSS
 
 **Color tokens.** New sections should always use the existing CSS custom properties (`var(--accent)`, `var(--text-muted)`, etc.) rather than hard-coding hex values. This ensures light/dark mode works automatically. Exception: inline styles on wireframe-class content that intentionally uses a fixed light palette (the "app screen" being mocked up).
 
+### 6.9 Operator-Level Patterns
+
+These patterns emerged from maintaining production artifacts (4,460 lines, 664 divs) across intensive editing sessions. They complement the framework-level methodology above.
+
+---
+
+#### The `replace_once()` Pattern (for editing existing content)
+
+The injection template above handles *additions* — new CSS, HTML, or JS inserted at anchor points. The other dominant operation is *editing existing content*: changing a status badge, updating a pricing cell, swapping an info box severity.
+
+Large HTML files contain many structurally identical fragments. A comparison table with 9 providers has 9 cells that all look like `<td style="padding: 8px; text-align: center;">OPEN</td>`. Bare `str.replace()` matches the first occurrence regardless of which row you intended. The edit lands in the wrong row with no error.
+
+**`replace_once()` validates uniqueness before replacing:**
+
+```python
+def replace_once(html, old, new, label):
+    """Replace exactly one occurrence. Warn if zero or multiple matches."""
+    count = html.count(old)
+    if count == 0:
+        print(f"  WARNING: '{label}' — target not found!")
+        return html
+    if count > 1:
+        print(f"  WARNING: '{label}' — {count} matches, replacing first only")
+        return html.replace(old, new, 1)
+    print(f"  OK {label}")
+    return html.replace(old, new)
+```
+
+**Usage in a transform script:**
+
+```python
+# BAD — hits whichever "OPEN" cell comes first
+html = html.replace('<td style="padding: 8px;">OPEN</td>',
+                     '<td style="padding: 8px;">CLOSED</td>')
+
+# GOOD — include surrounding context to guarantee a unique match
+html = replace_once(html,
+    'data-provider="bridge-xyz">\n              <td style="padding: 8px;">OPEN</td>',
+    'data-provider="bridge-xyz">\n              <td style="padding: 8px;">CLOSED</td>',
+    "Bridge XYZ status → CLOSED")
+```
+
+**The rule:** include enough surrounding context in the `old` string — the parent row's `data-` attribute, a neighboring cell, or the preceding comment — so that `html.count(old) == 1`. If `replace_once()` prints a warning, your context window is too narrow. Widen it; do not suppress the warning.
+
+---
+
+#### Factual Claim Cascade
+
+**Factual claim cascade across sections.** A factual claim in a comparison table (pricing number, status, capability flag) propagates to downstream sections via copy-paste across editing sessions: negotiation lever summaries, registry entries, info boxes, tooltips, calculator defaults. Changing the claim in one location without sweeping for echoes leaves contradictions — the table says "$0.30" but the negotiation section still says "$0.25" because it was written two sessions ago.
+
+**Rule:** After any batch of factual edits, sweep the full file:
+
+```bash
+grep -n "old_value" file.html
+```
+
+Update every instance, or document in a code comment why one instance is intentionally different (e.g., a historical reference vs. current pricing). The sweep is mandatory because factual inconsistency in a decision document destroys trust in the entire artifact — the reader cannot know which value is current.
+
+---
+
+#### Card Status Synchronization (cross-reference: §3.15)
+
+An option or provider card has four synchronized layers. Changing the card's status (e.g., from "blocked" to "recommended") requires updating all four. Partial updates produce visually contradictory cards — an info box that says "now available" inside a card with a red `blocked` border.
+
+| Layer | What to update | Example values |
+|-------|---------------|----------------|
+| **1. CSS class** | The class on the card's root element that controls border color and background | `recommended`, `alternative`, `blocked`, `neutral` |
+| **2. Badge** | Badge text and badge CSS class (color, icon) | Text: "Recommended" / "Blocked"; Class: `badge-green`, `badge-red` |
+| **3. Info box** | Content text and severity class inside the card's info/callout box | Text: "Available in all corridors"; Class: `info-box-success`, `info-box-warning`, `info-box-danger` |
+| **4. SVG annotations** | Colors, labels, border styles, and connector arrows in any associated diagram | Border stroke: `#27ae60` (green) vs `#e74c3c` (red); Label text; Arrow routing |
+
+**Checklist when changing a card's status:**
+
+1. `grep -n 'card-id-or-data-attr'` to find all four layers
+2. Update the CSS class on the root element
+3. Update badge text and badge class
+4. Update info box content and severity class
+5. Update SVG annotation colors, labels, and border style
+6. Browser preview to visually confirm consistency
+7. Check both light and dark themes (badge colors that work on dark backgrounds may be invisible on light)
+
+---
+
+#### Bottom-Up Edit Ordering
+
+When making multiple edits to a file interactively (using the Edit tool, not a transform script), **work from the bottom of the file upward** — highest line numbers first. Each replacement may add or remove lines, shifting all subsequent line numbers. If you edit line 200 first, the target you found at line 1800 via `grep -n` is now at a different line.
+
+Bottom-up ordering keeps all unprocessed targets at their original line numbers.
+
+**If bottom-up is impractical** (e.g., edits depend on each other top-down), re-run `html-tool.sh sections` or `grep -n` after each replacement to reacquire accurate line numbers before the next edit.
+
+**This does not apply to transform scripts.** A Python script that reads the file into a string and performs all replacements before writing operates on the original content — line-number shift is not a concern.
+
+---
+
+#### Recovery from `.bak` Files
+
+`html-tool.sh replace` creates a `.bak` file before overwriting. This is the safety net for failed replacements.
+
+**Recovery workflow when validation fails after a replace:**
+
+```bash
+# 1. Restore the pre-edit version
+cp file.html.bak file.html
+
+# 2. Diff to find what the replacement actually changed
+diff file.html.bak file-after-failed-edit.html | head -40
+
+# 3. Identify the discrepancy — missing closing tag, wrong section boundary, etc.
+
+# 4. Fix the replacement fragment in /tmp/section.html
+
+# 5. Re-run the replace
+./html-tool.sh replace panel-id /tmp/section.html
+
+# 6. Validate again
+./html-tool.sh validate
+```
+
+**Do not attempt to "fix forward"** by making corrective edits on top of a corrupted file. The `.bak` exists so you can revert cleanly. Forward-fixing compounds corruption — each corrective edit may introduce its own imbalance, and the resulting diff becomes unreadable.
+
+---
+
+#### Pre-Publish Sweep
+
+After all edits are complete and before the artifact is shared, delivered, or committed, run the full sweep. This is the final gate — it catches accumulated drift from multi-session editing that per-edit validation misses.
+
+**The sweep:**
+
+| Step | Command / Action | What it catches |
+|------|-----------------|-----------------|
+| 1. Full validation | `python3 validate.py <file>` (three-pass: structure, links, semantics) | Div imbalance, broken internal links, orphaned IDs |
+| 2. Stale factual claims | `grep -n "<old_value>"` for every value changed in this session | Factual claim cascade — echoes of old data in sections you didn't edit |
+| 3. Version consistency | Check `doc-version` meta tag, footer text, and version log comment all match | Version string drift between locations |
+| 4. Card layer sync | For every card whose status changed: verify CSS class, badge, info box, and SVG all agree | Partial status updates (see Card Status Synchronization checklist) |
+| 5. Dual-theme preview | Open in browser, toggle light/dark theme | Colors that work on one background but are invisible or unreadable on the other |
+| 6. Interactive feature check | If the file has calculators, toggles, or tab systems: click through every provider/scenario combination | JS breakage from renamed IDs, missing event handlers, or stale selector strings |
+
+**Rule:** No artifact ships without completing all six steps. Steps 1-3 are mechanical and fast. Steps 4-6 require visual inspection and cannot be automated away. If time pressure tempts you to skip steps 5-6, that is precisely when visual regressions are most likely — the edits were rushed, and rushed edits are the ones that break themes and interactions.
+
+
 ## 7. Rendering Pipeline
 
 For generating PNG output from HTML artifacts (diagrams, screenshots, visual artifacts).
@@ -1793,6 +2576,339 @@ function applyFilters() {
 ```
 
 ---
+
+### 8.3 Presentation-Class Skeleton
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="doc-version" content="1.0">
+<meta name="doc-updated" content="YYYY-MM-DDTHH:MM:SSZ">
+<title>Presentation Title</title>
+<style>
+:root {
+  --bg:#0b0d14; --surface:#141720; --surface2:#1c2030; --surface3:#232840;
+  --border:#2a2f45; --border2:#363d5a;
+  --text:#e4e6f0; --text2:#9aa0bb; --text3:#5c6480;
+  --accent:#6ea8fe; --accent2:#a78bfa; --accent3:#34d399; --warn:#fb923c;
+  --chrome-bg:#1e2233; --chrome-border:#2a2f45;
+  --tag-new:#34d399; --tag-same:#9aa0bb; --tag-better:#6ea8fe; --tag-regression:#fb923c;
+}
+body.light-mode {
+  --bg:#f8f9fb; --surface:#ffffff; --surface2:#f0f2f7; --surface3:#e8ecf4;
+  --border:#dde1ee; --border2:#c8cedf;
+  --text:#1a1d2e; --text2:#4a5068; --text3:#8890a8;
+  --accent:#2563eb; --accent2:#7c3aed; --accent3:#059669; --warn:#ea580c;
+  --chrome-bg:#e8ecf4; --chrome-border:#c8cedf;
+  --tag-new:#059669; --tag-same:#8890a8; --tag-better:#2563eb; --tag-regression:#ea580c;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; overflow:hidden; }
+body { font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+
+/* Theme toggle */
+#theme-toggle { position:fixed; top:14px; right:18px; z-index:1000; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; transition:background .15s,color .15s; }
+#theme-toggle:hover { background:var(--surface3); color:var(--text); }
+
+/* Track tabs */
+.track-bar { position:fixed; top:0; left:0; right:0; z-index:900; display:flex; gap:0; background:var(--surface); border-bottom:1px solid var(--border); padding:0 60px; }
+.track-btn { padding:12px 18px; font-size:12px; font-weight:600; color:var(--text3); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.track-btn:hover { color:var(--text); }
+.track-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* Step dots */
+.step-dots { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:900; display:flex; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:8px 16px; }
+.step-dot { width:10px; height:10px; border-radius:50%; background:var(--surface3); border:1px solid var(--border2); cursor:pointer; transition:all .15s; }
+.step-dot.active { background:var(--accent); border-color:var(--accent); }
+.step-dot:hover { background:var(--text3); }
+.step-label { font-size:11px; color:var(--text3); margin-left:8px; font-weight:600; align-self:center; }
+
+/* Slide container */
+.track { display:none; }
+.track.active { display:block; }
+.slide { display:none; height:100vh; padding:52px 24px 60px; }
+.slide.active { display:flex; gap:20px; }
+
+/* Split pane */
+.pane-mockup { flex:1; display:flex; flex-direction:column; min-width:0; }
+.pane-system { width:380px; flex-shrink:0; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+
+/* Browser chrome */
+.browser-chrome { background:var(--chrome-bg); border:1px solid var(--chrome-border); border-radius:10px; flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.chrome-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--chrome-border); }
+.chrome-dots { display:flex; gap:5px; }
+.chrome-dots span { width:10px; height:10px; border-radius:50%; }
+.chrome-dots span:nth-child(1) { background:#ff5f57; }
+.chrome-dots span:nth-child(2) { background:#ffbd2e; }
+.chrome-dots span:nth-child(3) { background:#28c840; }
+.chrome-url { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:4px 10px; font-size:11px; color:var(--text2); font-family:ui-monospace,'SF Mono',Menlo,monospace; }
+.chrome-body { flex:1; padding:20px; overflow-y:auto; background:var(--bg); }
+
+/* System panel */
+.sys-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; }
+.sys-card-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); margin-bottom:8px; }
+.sys-card pre { font-size:11px; font-family:ui-monospace,'SF Mono',Menlo,monospace; color:var(--accent); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+
+/* Comparison tags */
+.ctag { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; vertical-align:middle; margin-left:4px; }
+.ctag-new { color:#fff; background:var(--tag-new); }
+.ctag-same { color:#fff; background:var(--tag-same); }
+.ctag-better { color:#fff; background:var(--tag-better); }
+.ctag-regression { color:#fff; background:var(--tag-regression); }
+
+/* Keyboard hint */
+.key-hint { position:fixed; bottom:20px; right:24px; font-size:11px; color:var(--text3); z-index:900; }
+.key-hint kbd { display:inline-block; padding:2px 6px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:10px; }
+</style>
+</head>
+<body>
+<button id="theme-toggle" onclick="toggleTheme()">&#9788; Light</button>
+
+<div class="track-bar" id="track-bar"></div>
+
+<div class="track active" id="track-onboarding" data-track="onboarding">
+  <div class="slide active" data-slide="0">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/onboarding</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Welcome Screen <span class="ctag ctag-new">NEW</span></h2>
+          <p style="color:var(--text2);">Onboarding step 1 mockup content.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">API Call</div>
+        <pre>POST /api/v1/onboarding/start
+{ "user_id": "usr_123" }</pre>
+      </div>
+      <div class="sys-card">
+        <div class="sys-card-title">State Change</div>
+        <pre>status: null -> onboarding_started</pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide" data-slide="1">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/onboarding/profile</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Profile Setup <span class="ctag ctag-same">SAME</span></h2>
+          <p style="color:var(--text2);">Onboarding step 2 mockup content.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">API Call</div>
+        <pre>PUT /api/v1/users/usr_123/profile
+{ "name": "Jane Doe" }</pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide" data-slide="2">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/onboarding/complete</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Confirmation <span class="ctag ctag-better">BETTER</span></h2>
+          <p style="color:var(--text2);">Onboarding step 3 mockup content.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">Webhook</div>
+        <pre>POST /webhooks/onboarding_complete
+{ "user_id": "usr_123",
+  "completed_at": "2026-06-09T..." }</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="track" id="track-wallet" data-track="wallet">
+  <div class="slide" data-slide="0">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/wallet</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Wallet Overview</h2>
+          <p style="color:var(--text2);">Wallet journey step 1.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">API Call</div>
+        <pre>GET /api/v1/wallets/wal_456
+-> { "balance": "$10,000.00" }</pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide" data-slide="1">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/wallet/transfer</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Initiate Transfer <span class="ctag ctag-regression">REGRESSION</span></h2>
+          <p style="color:var(--text2);">Wallet journey step 2.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">API Call</div>
+        <pre>POST /api/v1/transfers
+{ "from": "wal_456", "amount": 500 }</pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide" data-slide="2">
+    <div class="pane-mockup">
+      <div class="browser-chrome">
+        <div class="chrome-bar">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-url">app.example.com/wallet/transfer/confirm</div>
+        </div>
+        <div class="chrome-body">
+          <h2 style="margin-bottom:12px;">Transfer Confirmed</h2>
+          <p style="color:var(--text2);">Wallet journey step 3.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pane-system">
+      <div class="sys-card">
+        <div class="sys-card-title">State Change</div>
+        <pre>transfer.status: pending -> completed
+wallet.balance: $10,000 -> $9,500</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step-dots" id="step-dots"></div>
+<div class="key-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> navigate slides</div>
+
+<script>
+var TRACKS = [
+  { id: 'onboarding', label: 'Onboarding Flow' },
+  { id: 'wallet', label: 'Wallet Journey' },
+];
+var currentTrack = 'onboarding';
+var currentSlide = {};
+
+(function init() {
+  /* Build track tabs */
+  var bar = document.getElementById('track-bar');
+  TRACKS.forEach(function(t) {
+    var btn = document.createElement('button');
+    btn.className = 'track-btn' + (t.id === currentTrack ? ' active' : '');
+    btn.textContent = t.label;
+    btn.setAttribute('data-track', t.id);
+    btn.onclick = function() { switchTrack(t.id); };
+    bar.appendChild(btn);
+  });
+
+  /* Initialize slide indices */
+  TRACKS.forEach(function(t) { currentSlide[t.id] = 0; });
+
+  /* Build step dots for initial track */
+  buildDots();
+
+  /* Theme restore */
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light-mode');
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = '☾ Dark';
+  }
+})();
+
+function switchTrack(id) {
+  currentTrack = id;
+  document.querySelectorAll('.track').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('track-' + id).classList.add('active');
+  document.querySelectorAll('.track-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-track') === id);
+  });
+  showSlide(currentSlide[id] || 0);
+  buildDots();
+}
+
+function showSlide(idx) {
+  var track = document.getElementById('track-' + currentTrack);
+  var slides = track.querySelectorAll('.slide');
+  if (idx < 0 || idx >= slides.length) return;
+  currentSlide[currentTrack] = idx;
+  slides.forEach(function(s) { s.classList.remove('active'); });
+  slides[idx].classList.add('active');
+  updateDots();
+}
+
+function buildDots() {
+  var track = document.getElementById('track-' + currentTrack);
+  var count = track.querySelectorAll('.slide').length;
+  var container = document.getElementById('step-dots');
+  container.innerHTML = '';
+  for (var i = 0; i < count; i++) {
+    var dot = document.createElement('div');
+    dot.className = 'step-dot' + (i === (currentSlide[currentTrack] || 0) ? ' active' : '');
+    dot.setAttribute('data-idx', i);
+    dot.onclick = (function(idx) { return function() { showSlide(idx); }; })(i);
+    container.appendChild(dot);
+  }
+  var label = document.createElement('span');
+  label.className = 'step-label';
+  label.id = 'step-counter';
+  container.appendChild(label);
+  updateDots();
+}
+
+function updateDots() {
+  var track = document.getElementById('track-' + currentTrack);
+  var total = track.querySelectorAll('.slide').length;
+  var idx = currentSlide[currentTrack] || 0;
+  document.querySelectorAll('.step-dot').forEach(function(d, i) {
+    d.classList.toggle('active', i === idx);
+  });
+  var counter = document.getElementById('step-counter');
+  if (counter) counter.textContent = (idx + 1) + ' / ' + total;
+}
+
+/* Keyboard navigation */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') showSlide((currentSlide[currentTrack] || 0) + 1);
+  else if (e.key === 'ArrowLeft') showSlide((currentSlide[currentTrack] || 0) - 1);
+});
+
+function toggleTheme() {
+  var isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle').textContent = isLight ? '☾ Dark' : '☆ Light';
+}
+</script>
+</body>
+</html>
+```
 
 ## 9. Checklist
 
