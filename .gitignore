@@ -4,14 +4,11 @@
 .idea/
 .vscode/
 
-# Python (if you build generators alongside)
+# Python bytecode (from validate.py / transform scripts)
 __pycache__/
 *.py[cod]
-.venv/
-venv/
-*.egg-info/
 
-# Generated / served artifacts
-out/
-dist/
+# Local scratch files
 *.local.html
+/tmp/
+__pycache__/
