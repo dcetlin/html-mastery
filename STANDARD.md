@@ -537,13 +537,14 @@ Key-value pairs in a responsive grid.
 .tab-panel.active { display: block; }
 ```
 
-**JS:**
+**JS (container-scoped — safe with multiple tab bars):**
 ```js
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+function switchTab(name, container) {
+  var scope = container || document;
+  scope.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  scope.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
   event.target.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
+  scope.querySelector('#tab-' + name).classList.add('active');
 }
 ```
 
@@ -1028,6 +1029,50 @@ Primitives for system architecture visualization:
 | Registration connector | Upward arrow from component to hub | Components registering with a central system |
 | Progressive ghosting | Full opacity / reduced / dashed outline | Concrete / planned / open-slot components |
 
+**Concrete SVG for the 4 most-used primitives:**
+
+**Layer band:**
+```svg
+<rect x="30" y="Y" width="W" height="H" rx="10" fill="#EEF2FF"/>
+<text transform="translate(20, MID) rotate(-90)" font-size="8.5" fill="#9CA3AF"
+      text-anchor="middle" letter-spacing="0.1em">LAYER NAME</text>
+```
+
+**Component box:**
+```svg
+<g transform="translate(x, y)">
+  <rect width="W" height="H" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1.5"/>
+  <text x="12" y="17" font-size="9" fill="#C0C6CE" letter-spacing="0.04em">// Module::Path</text>
+  <line x1="12" y1="22" x2="W-12" y2="22" stroke="#F3F4F6" stroke-width="0.5"/>
+  <text x="12" y="40" font-size="13" font-weight="700" fill="#1A1A2E">ClassName</text>
+  <text x="12" y="57" font-size="10.5" fill="#6B7280">key interface or description</text>
+</g>
+```
+
+**Plugin slot:**
+```svg
+<rect width="W" height="H" rx="8" fill="#FAFBFF"
+      stroke="#C7D2FE" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text x="12" y="36" font-size="11" font-weight="600" fill="#A5B4FC">[SlotName]</text>
+<text x="12" y="52" font-size="10" fill="#C7D2FE">future — not yet built</text>
+```
+
+**Coupling boundary:**
+```svg
+<line x1="30" y1="Y" x2="W-30" y2="Y" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="8 4"/>
+<text x="W/2" y="Y-6" text-anchor="middle" font-size="8.5" fill="#94A3B8" letter-spacing="0.06em">
+  COUPLING BOUNDARY — direction annotation here
+</text>
+```
+
+**Progressive ghosting levels:**
+
+| Level | Border | Fill | Text | Use |
+|-------|--------|------|------|-----|
+| Concrete | #E5E7EB solid 1.5px | white | #374151 | Built |
+| Planned | #C7D2FE dashed 6/3 | #FAFBFF | #A5B4FC | Scoped, not built |
+| Open slot | #E2E8F0 dashed 6/3 | #FAFBFF | #CBD5E1 | Unspecified |
+
 ### 5.3 Technical Annotation Patterns
 
 **Core principle:** Annotate architecture, not fields. Label the structural relationships, not every data attribute.
@@ -1081,6 +1126,30 @@ Large HTML artifacts (1500+ lines) cannot be edited as monolithic files by LLMs.
 
 Never edit a large HTML file by rewriting the whole thing. The output will be truncated, corrupted, or silently incomplete.
 
+**Concrete tooling (`tools/html-tool.sh`):**
+
+```bash
+export HTML_TOOL_FILE=my-document.html
+
+# Discover structure
+./html-tool.sh sections          # list all IDs + line ranges
+./html-tool.sh stats             # line counts per section
+
+# Extract → edit → replace cycle
+./html-tool.sh extract panel-id > /tmp/section.html
+# ... edit /tmp/section.html (small, focused) ...
+./html-tool.sh replace panel-id /tmp/section.html
+
+# Inject an SVG into a container
+./html-tool.sh inject-svg chart-panel new-flow.svg
+
+# Validate (non-negotiable after every edit)
+./html-tool.sh validate
+
+# Preview in browser
+./html-tool.sh preview
+```
+
 ### 6.2 Validation After Every Edit
 
 Non-negotiable. After every structural edit, verify:
@@ -1110,6 +1179,40 @@ For mechanical changes across a large file (CSS injection, class renaming, div w
 - Changes to fewer than 5 instances
 - Changes that require judgment per instance
 
+**Transform script template:**
+
+```python
+#!/usr/bin/env python3
+"""Transform: describe what this changes."""
+import re, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+def transform(html):
+    # Pattern-based changes here.
+    # Print what each step does so failures are traceable.
+    return html
+
+def main():
+    import os
+    html = open(sys.argv[1]).read()
+    html = transform(html)
+    open(sys.argv[2], 'w').write(html)
+    print(f"Written to {sys.argv[2]}")
+
+    from validate import validate_html
+    issues, stats = validate_html(sys.argv[2])
+    print(f"  Divs: {stats['total_opens']}/{stats['total_closes']}, max depth {stats['max_depth']}")
+    if issues:
+        print(f"  WARNING: {len(issues)} issues")
+        for i in issues: print(f"    {i}")
+
+if __name__ == '__main__':
+    main()
+```
+
+**Multi-point injection:** When adding a new feature (CSS + HTML + JS) to a monolithic HTML file, write a Python script with three surgical insertions: (1) CSS block before the `@media` queries in `<style>`, (2) HTML content between existing section divs, (3) JS handlers before the closing `</script>` tag. Always validate div balance after injection.
+
 ### 6.4 Anti-Patterns
 
 These fail reliably. Do not attempt them.
@@ -1119,6 +1222,10 @@ These fail reliably. Do not attempt them.
 **Edit tool on large HTML with encoded characters.** The Edit tool's string matching breaks on HTML entities (`&amp;`, `&#8212;`), smart quotes, and other encoded characters. The `old_string` in the tool call does not match the file content because the encoding is invisible in the tool's representation. Write a transform script instead, or extract the section, edit it as a standalone fragment, and replace.
 
 **Mixing structural and semantic changes in one pass.** Structural changes (moving divs, changing nesting, adding containers) and semantic changes (rewriting text, updating data) use different cognitive modes. Mixing them in one edit degrades both. Do structural changes first, validate, then do semantic changes.
+
+**Opening/closing tag pairing in transforms.** When converting one element type to another (e.g., tabs → cards), the transform must add BOTH the opening and closing tags. A transform that adds `<div class="card-body">` but relies on an existing `</div>` that was closing a different element breaks nesting silently and cascades through the entire document.
+
+**Compressed taxonomic codes as primary UI.** Using short codes (C2, E1, T5) as the visible element with tooltips for meaning reads as noise to anyone who doesn't already hold the taxonomy. Plain-language names must always be visible; codes are secondary metadata. Design principle: expand, don't compress.
 
 ### 6.5 Substance vs. Presentation
 
@@ -1131,6 +1238,8 @@ Before editing any HTML artifact, ask: "Is this a substance change or a presenta
 
 If the artifact was generated from markdown or data, substance changes go to the source and the HTML is regenerated. Editing substance directly in HTML creates drift between source and presentation.
 
+The question is never "does a doc exist?" — that makes the rule dependent on filesystem state, not content nature. A section with no upstream doc that contains new analysis is a *gap to fill*, not permission to go HTML-first.
+
 ### 6.6 Canon Authority Tiers
 
 For artifacts that have both a source format and an HTML rendering:
@@ -1139,7 +1248,16 @@ For artifacts that have both a source format and an HTML rendering:
 |------|-------------|-------------|
 | Markdown-sourced | Content originates in `.md`, HTML is generated | Edit the markdown, regenerate |
 | HTML-native | Content was authored directly in HTML | Edit the HTML |
-| Extractable | HTML content can be extracted back to structured data | Either, but keep in sync |
+| Extractable | HTML content can be extracted back to structured data | Edit HTML directly. Use `html-tool.sh extract` if a future agent needs the content as text. No parallel markdown to maintain. |
+
+Why not dual-canon for everything? Maintaining parallel markdown copies of presentation content creates drift. Extraction tooling provides the read path without the maintenance cost. But substance always gets a markdown home — that's non-negotiable.
+
+### 6.7 Version Discipline
+
+1. Run validation (div balance, structural integrity) before any version bump.
+2. Increment minor version for content changes, major for structural changes.
+3. Update the `doc-version` and `doc-updated` meta tags.
+4. Record the transition in a commit message or log: old version → new version, line count, div count.
 
 ---
 
@@ -1174,6 +1292,21 @@ For compositing screenshots with SVG annotations:
 ```
 
 **Coordinate mapping:** With `--force-device-scale-factor=2`, the actual pixel dimensions are 2x the `--window-size`. SVG coordinates correspond to the viewport size (not pixel size), so: `SVG coordinate = actual_pixel / 2`.
+
+**Measuring element positions:** Use PIL pixel-color sampling to locate elements in a screenshot:
+```python
+from PIL import Image
+img = Image.open('screenshot.png')
+for y in range(0, img.height, 4):
+    for x in range(0, img.width, 4):
+        r, g, b = img.getpixel((x, y))[:3]
+        if r > 200 and g < 160 and b < 160:
+            red_pixels.append((x, y))
+```
+
+**Offset trap:** If the screenshot is embedded at `x=18, y=4` in the SVG, add (18, 4) to ALL overlay coordinates. Miss this and everything drifts.
+
+**Window-size clipping:** `--window-size` clips content silently if too small. Size to your layout. Check the output dimensions match expectations.
 
 ### 7.3 Annotation Overlays
 

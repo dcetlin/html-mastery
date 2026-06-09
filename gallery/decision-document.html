@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="doc-version" content="1.0">
+<meta name="doc-updated" content="2026-06-08T00:00:00Z">
 <title>Acme Corp — Cloud Database Provider Selection</title>
 <style>
 /* ═══════════════════════════════════════════════════════════
@@ -18,6 +20,11 @@
   --font-mono:'SF Mono','Cascadia Code','Fira Code',monospace;
   --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   --transition:0.2s ease;
+  --done-col:#4ade80; --done-bg:#0a2e1a;
+  --pend-col:#fbbf24; --pend-bg:#2a2008;
+  --fail-col:#f87171; --fail-bg:#2e0a0a;
+  --act-col:#60a5fa;  --act-bg:#0a1a2e;
+  --cl-col:#9aa0bb;   --cl-bg:#1c2030;
 }
 body.light-mode {
   --bg:#f8f9fb; --surface:#ffffff; --surface2:#f0f2f7; --surface3:#e8ecf4;
@@ -25,6 +32,11 @@ body.light-mode {
   --text:#1a1d2e; --text2:#4a5068; --text3:#8890a8;
   --accent:#2563eb; --accent2:#7c3aed; --accent3:#059669; --warn:#ea580c;
   --red:#dc2626; --green:#16a34a; --yellow:#d97706;
+  --done-col:#1a7a3c; --done-bg:#d4f7e0;
+  --pend-col:#a06000; --pend-bg:#fef3cd;
+  --fail-col:#c0392b; --fail-bg:#fde8e6;
+  --act-col:#1565c0;  --act-bg:#e3f0ff;
+  --cl-col:#666;      --cl-bg:#eee;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -36,7 +48,7 @@ body{
   font-family:var(--font-sans);color:var(--text);background:var(--bg);
   line-height:1.65;padding:2rem 1rem;transition:background var(--transition),color var(--transition);
 }
-.container{max-width:960px;margin:0 auto}
+.wrap{max-width:820px;margin:0 auto}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
@@ -52,8 +64,22 @@ p{margin-bottom:0.75rem;color:var(--text2)}
 code{font-family:var(--font-mono);font-size:0.85em;background:var(--surface2);
   padding:0.15em 0.4em;border-radius:4px}
 
-/* Section numbering */
+/* Section numbering (legacy) */
 .sn{color:var(--text3);font-family:var(--font-mono);font-size:0.85em;margin-right:0.4em}
+
+/* Section headers (STANDARD.md §3.2) */
+.section{margin-bottom:56px}
+.section-header{
+  font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.1em;color:var(--text2);margin-bottom:20px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.section-id{
+  display:inline-block;font-size:11px;font-weight:700;
+  color:var(--text3);font-family:var(--font-mono);
+  user-select:none;flex-shrink:0;
+}
 
 /* ═══════════════════════════════════════════════════════════
    §0.3  STATUS BADGES
@@ -62,11 +88,11 @@ code{font-family:var(--font-mono);font-size:0.85em;background:var(--surface2);
   display:inline-block;font-size:0.7rem;font-weight:600;text-transform:uppercase;
   letter-spacing:0.05em;padding:0.15em 0.55em;border-radius:99px;vertical-align:middle;
 }
-.bd{background:#dc262620;color:var(--red);border:1px solid #dc262640}       /* blocked */
-.bp{background:#6ea8fe18;color:var(--accent);border:1px solid #6ea8fe30}    /* planned */
-.bf{background:#4ade8018;color:var(--green);border:1px solid #4ade8030}     /* done/good */
-.ba{background:#fbbf2418;color:var(--yellow);border:1px solid #fbbf2430}    /* alternative/warn */
-.bc{background:#a78bfa18;color:var(--accent2);border:1px solid #a78bfa30}   /* canon */
+.bd{color:var(--done-col);background:var(--done-bg)}       /* done/good (green) */
+.bp{color:var(--pend-col);background:var(--pend-bg)}       /* pending (yellow) */
+.bf{color:var(--fail-col);background:var(--fail-bg)}       /* failed/blocked (red) */
+.ba{color:var(--act-col);background:var(--act-bg)}         /* active (blue) */
+.bc{color:var(--cl-col);background:var(--cl-bg)}           /* closed (gray) */
 
 /* Recommendation badges */
 .rec-badge{
@@ -253,22 +279,33 @@ tr:hover td{background:var(--surface2)}
 /* ═══════════════════════════════════════════════════════════
    §0.15 CLIPBOARD WIDGET
    ═══════════════════════════════════════════════════════════ */
-.clipboard-widget{
+.comment-widget{
+  margin-top:2rem;padding:20px 24px;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:1rem 1.25rem;margin-top:2rem;
 }
-.clipboard-widget textarea{
-  width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--radius);padding:0.75rem;color:var(--text);font-family:var(--font-sans);
-  font-size:0.88rem;resize:vertical;margin:0.5rem 0;
+.comment-widget-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.09em;color:var(--text3);margin-bottom:14px;
 }
-.clipboard-widget textarea:focus{outline:none;border-color:var(--accent)}
-.clipboard-widget button{
-  padding:0.45rem 1rem;font-size:0.82rem;font-weight:500;border-radius:var(--radius);
-  cursor:pointer;border:1px solid var(--accent);background:var(--accent)15;color:var(--accent);
-  transition:all var(--transition);
+.comment-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.comment-label{
+  font-size:11px;font-weight:700;
+  font-family:var(--font-mono);
+  color:var(--text3);min-width:36px;
 }
-.clipboard-widget button:hover{background:var(--accent);color:#fff}
+.comment-input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;font-size:12px;
+  color:var(--text);outline:none;
+}
+.comment-input:focus{border-color:var(--accent)}
+.copy-comments-btn{
+  margin-top:12px;padding:8px 18px;background:var(--accent);
+  color:#fff;border:none;border-radius:6px;
+  font-size:12px;font-weight:700;cursor:pointer;transition:opacity 0.15s;
+}
+.copy-comments-btn:hover{opacity:0.85}
+.copy-feedback{margin-top:8px;font-size:11px;color:var(--accent3);min-height:16px}
 
 /* ═══════════════════════════════════════════════════════════
    §0.16 UTILITIES
@@ -289,7 +326,7 @@ tr:hover td{background:var(--surface2)}
   <span id="theme-icon">&#9790;</span>
 </button>
 
-<div class="container">
+<div class="wrap">
 <!-- ═══════════════════════════════════════════════════════════
      §1  DOCUMENT HEADER
      ═══════════════════════════════════════════════════════════ -->
@@ -310,7 +347,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §2  EXECUTIVE SUMMARY
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;1</span>Executive Summary</h2>
+<div class="section-header"><span class="section-id">&sect;1</span> Executive Summary</div>
 <p>
   Acme Corp is building <strong>ProjectNova</strong>, a real-time analytics product requiring
   a new primary database. This document evaluates three cloud database providers against
@@ -359,7 +396,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §3  PROVIDER OPTION CARDS
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;2</span>Provider Options</h2>
+<div class="section-header"><span class="section-id">&sect;2</span> Provider Options</div>
 
 <!-- ── Provider A: Managed PostgreSQL ── -->
 <div class="card" id="provider-a">
@@ -376,33 +413,32 @@ tr:hover td{background:var(--surface2)}
   <!-- Inline SVG: Provider A data flow -->
   <div class="diagram-wrap">
     <svg width="680" height="120" viewBox="0 0 680 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="provA-arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#6366F1"/>
+        </marker>
+        <marker id="provA-arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#F59E0B"/>
+        </marker>
+      </defs>
       <!-- App Server (Primary/blue) -->
       <rect x="10" y="35" width="120" height="50" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
       <text x="70" y="63" text-anchor="middle" fill="#6366F1" font-weight="600">App Server</text>
       <!-- Arrow -->
-      <line x1="130" y1="60" x2="175" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+      <line x1="130" y1="60" x2="175" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#provA-arrow-blue)"/>
       <!-- Connection Pool (Highlight/amber) -->
       <rect x="175" y="35" width="120" height="50" rx="8" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5"/>
       <text x="235" y="63" text-anchor="middle" fill="#92400E" font-weight="600">Conn Pool</text>
       <!-- Arrow -->
-      <line x1="295" y1="60" x2="340" y2="60" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+      <line x1="295" y1="60" x2="340" y2="60" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#provA-arrow-amber)"/>
       <!-- Primary DB (Primary/blue) -->
       <rect x="340" y="35" width="130" height="50" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
       <text x="405" y="63" text-anchor="middle" fill="#6366F1" font-weight="600">Primary (PG)</text>
       <!-- Arrow to replica -->
-      <line x1="470" y1="60" x2="520" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+      <line x1="470" y1="60" x2="520" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#provA-arrow-blue)"/>
       <!-- Read Replica (Muted/green) -->
       <rect x="520" y="35" width="140" height="50" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
       <text x="590" y="63" text-anchor="middle" fill="#16A34A" font-weight="600">Read Replica</text>
-      <!-- Defs -->
-      <defs>
-        <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <path d="M0,0 L8,3 L0,6" fill="#6366F1"/>
-        </marker>
-        <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <path d="M0,0 L8,3 L0,6" fill="#F59E0B"/>
-        </marker>
-      </defs>
     </svg>
   </div>
 
@@ -452,26 +488,32 @@ tr:hover td{background:var(--surface2)}
 
   <div class="diagram-wrap">
     <svg width="680" height="120" viewBox="0 0 680 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- App Server -->
-      <rect x="10" y="35" width="120" height="50" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
-      <text x="70" y="63" text-anchor="middle" fill="#6366F1" font-weight="600">App Server</text>
-      <line x1="130" y1="60" x2="175" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
-      <!-- API Gateway (Highlight/amber) -->
-      <rect x="175" y="35" width="120" height="50" rx="8" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5"/>
-      <text x="235" y="63" text-anchor="middle" fill="#92400E" font-weight="600">API Gateway</text>
-      <line x1="295" y1="60" x2="340" y2="60" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
-      <!-- NoSQL Tables (Secondary/purple) -->
-      <rect x="340" y="35" width="140" height="50" rx="8" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
-      <text x="410" y="63" text-anchor="middle" fill="#8B5CF6" font-weight="600">NoSQL Tables</text>
-      <line x1="480" y1="60" x2="520" y2="60" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrow-purple)"/>
-      <!-- Global Index (Muted/green) -->
-      <rect x="520" y="35" width="140" height="50" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
-      <text x="590" y="63" text-anchor="middle" fill="#16A34A" font-weight="600">Global Index</text>
       <defs>
-        <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <marker id="provB-arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#6366F1"/>
+        </marker>
+        <marker id="provB-arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#F59E0B"/>
+        </marker>
+        <marker id="provB-arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
           <path d="M0,0 L8,3 L0,6" fill="#8B5CF6"/>
         </marker>
       </defs>
+      <!-- App Server -->
+      <rect x="10" y="35" width="120" height="50" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+      <text x="70" y="63" text-anchor="middle" fill="#6366F1" font-weight="600">App Server</text>
+      <line x1="130" y1="60" x2="175" y2="60" stroke="#6366F1" stroke-width="1.5" marker-end="url(#provB-arrow-blue)"/>
+      <!-- API Gateway (Highlight/amber) -->
+      <rect x="175" y="35" width="120" height="50" rx="8" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="235" y="63" text-anchor="middle" fill="#92400E" font-weight="600">API Gateway</text>
+      <line x1="295" y1="60" x2="340" y2="60" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#provB-arrow-amber)"/>
+      <!-- NoSQL Tables (Secondary/purple) -->
+      <rect x="340" y="35" width="140" height="50" rx="8" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+      <text x="410" y="63" text-anchor="middle" fill="#8B5CF6" font-weight="600">NoSQL Tables</text>
+      <line x1="480" y1="60" x2="520" y2="60" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#provB-arrow-purple)"/>
+      <!-- Global Index (Muted/green) -->
+      <rect x="520" y="35" width="140" height="50" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
+      <text x="590" y="63" text-anchor="middle" fill="#16A34A" font-weight="600">Global Index</text>
     </svg>
   </div>
 
@@ -525,17 +567,25 @@ tr:hover td{background:var(--surface2)}
 
   <div class="diagram-wrap">
     <svg width="680" height="140" viewBox="0 0 680 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="provC-arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#6366F1"/>
+        </marker>
+        <marker id="provC-arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#F59E0B"/>
+        </marker>
+      </defs>
       <!-- App Server -->
       <rect x="10" y="45" width="120" height="50" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
       <text x="70" y="73" text-anchor="middle" fill="#6366F1" font-weight="600">App Server</text>
-      <line x1="130" y1="70" x2="190" y2="70" stroke="#6366F1" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+      <line x1="130" y1="70" x2="190" y2="70" stroke="#6366F1" stroke-width="1.5" marker-end="url(#provC-arrow-blue)"/>
       <!-- Query Router (Highlight/amber) -->
       <rect x="190" y="45" width="130" height="50" rx="8" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5"/>
       <text x="255" y="73" text-anchor="middle" fill="#92400E" font-weight="600">Query Router</text>
       <!-- Arrows to shards -->
-      <line x1="320" y1="60" x2="390" y2="30" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
-      <line x1="320" y1="70" x2="390" y2="70" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
-      <line x1="320" y1="80" x2="390" y2="110" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+      <line x1="320" y1="60" x2="390" y2="30" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#provC-arrow-amber)"/>
+      <line x1="320" y1="70" x2="390" y2="70" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#provC-arrow-amber)"/>
+      <line x1="320" y1="80" x2="390" y2="110" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#provC-arrow-amber)"/>
       <!-- Shard 1 (Muted/green) -->
       <rect x="390" y="5" width="110" height="40" rx="6" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
       <text x="445" y="29" text-anchor="middle" fill="#16A34A" font-weight="500" font-size="11">Shard 1</text>
@@ -576,7 +626,7 @@ tr:hover td{background:var(--surface2)}
     <div class="detail-body">
       <p>Managed offering in beta. Documentation gaps noted in connection handling and backup tooling.
          Community support only &mdash; no enterprise SLA until Q3 2026.
-         <span class="bd">Blocker</span>: SOC 2 Type II certification pending, expected Q4 2026.</p>
+         <span class="bf">Blocker</span>: SOC 2 Type II certification pending, expected Q4 2026.</p>
     </div>
   </details>
   <details>
@@ -594,7 +644,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §4  CROSS-OPTION COMPARISON TABLE
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;3</span>Cross-Option Comparison</h2>
+<div class="section-header"><span class="section-id">&sect;3</span> Cross-Option Comparison</div>
 
 <div style="overflow-x:auto">
 <table>
@@ -602,9 +652,9 @@ tr:hover td{background:var(--surface2)}
     <tr>
       <th>Dimension</th>
       <th>Wt.</th>
-      <th>Provider A <span class="bf">Rec</span></th>
-      <th>Provider B <span class="ba">Alt</span></th>
-      <th>Provider C <span class="bd">Blk</span></th>
+      <th>Provider A <span class="bd">Rec</span></th>
+      <th>Provider B <span class="bp">Alt</span></th>
+      <th>Provider C <span class="bf">Blk</span></th>
     </tr>
   </thead>
   <tbody>
@@ -652,7 +702,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §5  INTERACTIVE COST CALCULATOR
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;4</span>Cost Calculator</h2>
+<div class="section-header"><span class="section-id">&sect;4</span> Cost Calculator</div>
 <p>Adjust the sliders to model cost at different scales. Provider C pricing is unavailable.</p>
 
 <div class="card">
@@ -721,7 +771,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §6  MILESTONE TABS
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;5</span>Rollout Milestones</h2>
+<div class="section-header"><span class="section-id">&sect;5</span> Rollout Milestones</div>
 
 <div class="tab-bar" id="milestone-tabs">
   <button class="tab-btn active" data-tab="phase1">Phase 1: Foundation</button>
@@ -731,7 +781,7 @@ tr:hover td{background:var(--surface2)}
 
 <div id="phase1" class="tab-panel active">
   <div class="card">
-    <h4>Phase 1: Foundation <span class="bf">Weeks 1&ndash;4</span></h4>
+    <h4>Phase 1: Foundation <span class="bd">Weeks 1&ndash;4</span></h4>
     <p>Provision managed PostgreSQL instance. Migrate staging environment. Port existing
        schemas and validate ORM compatibility. Set up monitoring dashboards and alerting.</p>
     <table>
@@ -761,7 +811,7 @@ tr:hover td{background:var(--surface2)}
 
 <div id="phase3" class="tab-panel">
   <div class="card">
-    <h4>Phase 3: Multi-Region <span class="bd">Months 4&ndash;6</span></h4>
+    <h4>Phase 3: Multi-Region <span class="bp">Months 4&ndash;6</span></h4>
     <p>Deploy cross-region read replicas for EU and APAC. Implement geo-routing at the
        application layer. Re-evaluate Provider C if SOC 2 certification lands on schedule.</p>
     <table>
@@ -779,7 +829,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §7  STEP NAVIGATOR — Migration Journey
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;6</span>Migration Journey</h2>
+<div class="section-header"><span class="section-id">&sect;6</span> Migration Journey</div>
 <p>Click each step to see details of the migration path from current infrastructure to Provider A.</p>
 
 <div class="step-nav" id="step-nav">
@@ -839,11 +889,19 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §8  ARCHITECTURE FLOW DIAGRAM (Full)
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;7</span>Target Architecture</h2>
+<div class="section-header"><span class="section-id">&sect;7</span> Target Architecture</div>
 <p>Post-migration architecture with Provider A, showing all four system roles.</p>
 
 <div class="diagram-wrap">
   <svg width="800" height="320" viewBox="0 0 800 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arch-arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="#8B5CF6"/>
+      </marker>
+      <marker id="arch-arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="#16A34A"/>
+      </marker>
+    </defs>
     <!-- Legend -->
     <rect x="560" y="10" width="230" height="90" rx="6" fill="var(--surface2,#1c2030)" stroke="var(--border,#2a2f45)" stroke-width="1"/>
     <text x="575" y="28" fill="var(--text3,#5c6480)" font-size="10" font-weight="600">LEGEND</text>
@@ -872,7 +930,7 @@ tr:hover td{background:var(--surface2)}
     <text x="315" y="136" text-anchor="middle" fill="#8B5CF6" font-weight="600" font-size="12">Load Balancer</text>
 
     <!-- Arrow down to App -->
-    <line x1="315" y1="154" x2="315" y2="190" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrow-purple)"/>
+    <line x1="315" y1="154" x2="315" y2="190" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arch-arrow-purple)"/>
 
     <!-- Row 3: App Servers -->
     <rect x="200" y="190" width="110" height="44" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
@@ -901,19 +959,13 @@ tr:hover td{background:var(--surface2)}
     <rect x="430" y="260" width="140" height="44" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
     <text x="500" y="286" text-anchor="middle" fill="#16A34A" font-weight="600" font-size="12">Primary (PG)</text>
 
-    <line x1="390" y1="282" x2="430" y2="282" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+    <line x1="390" y1="282" x2="430" y2="282" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arch-arrow-green)"/>
 
     <!-- Read Replica -->
     <rect x="620" y="260" width="150" height="44" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
     <text x="695" y="286" text-anchor="middle" fill="#16A34A" font-weight="600" font-size="12">Read Replica</text>
 
-    <line x1="570" y1="282" x2="620" y2="282" stroke="#16A34A" stroke-width="1.2" stroke-dasharray="4" marker-end="url(#arrow-green)"/>
-
-    <defs>
-      <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <path d="M0,0 L8,3 L0,6" fill="#16A34A"/>
-      </marker>
-    </defs>
+    <line x1="570" y1="282" x2="620" y2="282" stroke="#16A34A" stroke-width="1.2" stroke-dasharray="4" marker-end="url(#arch-arrow-green)"/>
   </svg>
 </div>
 
@@ -922,7 +974,7 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §9  DECISION ANALYSIS
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;8</span>Decision Analysis</h2>
+<div class="section-header"><span class="section-id">&sect;8</span> Decision Analysis</div>
 
 <h3><span class="sn">&sect;8.1</span>Multi-Lens Evaluation</h3>
 <p>Each provider examined through three analytical lenses to stress-test the recommendation.</p>
@@ -995,15 +1047,12 @@ tr:hover td{background:var(--surface2)}
 <!-- ═══════════════════════════════════════════════════════════
      §10  CLIPBOARD COMMENT WIDGET
      ═══════════════════════════════════════════════════════════ -->
-<h2><span class="sn">&sect;9</span>Feedback</h2>
-<div class="clipboard-widget">
-  <h4>Leave a Comment</h4>
-  <p class="text-sm text-muted">Your comment will be copied to clipboard for pasting into the review thread.</p>
-  <textarea id="comment-input" placeholder="Type your feedback on this decision document..."></textarea>
-  <div class="flex-between">
-    <button onclick="copyComment()">Copy to Clipboard</button>
-    <span id="copy-status" class="text-xs text-muted"></span>
-  </div>
+<div class="section-header"><span class="section-id">&sect;9</span> Feedback</div>
+<div class="comment-widget" id="comment-widget">
+  <div class="comment-widget-title">Section Comments</div>
+  <div class="comment-inputs" id="comment-inputs"></div>
+  <button class="copy-comments-btn" onclick="copyComments()">Copy comments</button>
+  <div class="copy-feedback" id="copy-feedback"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -1015,7 +1064,7 @@ tr:hover td{background:var(--surface2)}
   <p>Generated with html-mastery. Self-contained, no external dependencies.</p>
 </footer>
 
-</div><!-- /.container -->
+</div><!-- /.wrap -->
 
 <!-- ═══════════════════════════════════════════════════════════
      SCRIPTS (~130 lines vanilla JS)
@@ -1023,6 +1072,22 @@ tr:hover td{background:var(--surface2)}
 <script>
 (function() {
   'use strict';
+
+  /* ── Standard Helpers (STANDARD.md §3.21) ── */
+  function fmt(n) { return n == null ? '—' : Number(n).toLocaleString(); }
+  function fmtDate(s) {
+    if (!s) return '—';
+    try { return new Date(s).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+    catch (e) { return s.slice(0, 16); }
+  }
+  function fmtDuration(secs) {
+    if (secs == null || secs < 0) return '—';
+    if (secs < 60) return secs + 's';
+    if (secs < 3600) return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    return h + 'h ' + m + 'm';
+  }
 
   /* ── Theme Toggle ── */
   function toggleTheme() {
@@ -1171,36 +1236,49 @@ tr:hover td{background:var(--surface2)}
 
   recalculate();
 
-  /* ── Clipboard Widget ── */
-  window.copyComment = function() {
-    var textarea = document.getElementById('comment-input');
-    var status = document.getElementById('copy-status');
-    if (!textarea.value.trim()) {
-      status.textContent = 'Nothing to copy';
+  /* ── Per-Section Comment Widget ── */
+  var sections = [
+    { id: 's1', label: '§1' },
+    { id: 's2', label: '§2' },
+    { id: 's3', label: '§3' },
+    { id: 's4', label: '§4' },
+    { id: 's5', label: '§5' },
+    { id: 's6', label: '§6' },
+    { id: 's7', label: '§7' },
+    { id: 's8', label: '§8' },
+    { id: 's9', label: '§9' }
+  ];
+
+  (function buildCommentWidget() {
+    var container = document.getElementById('comment-inputs');
+    if (!container) return;
+    sections.forEach(function(s) {
+      var row = document.createElement('div');
+      row.className = 'comment-row';
+      row.innerHTML =
+        '<span class="comment-label">' + s.label + '</span>' +
+        '<input class="comment-input" type="text" id="ci-' + s.id +
+        '" placeholder="Comment on ' + s.label + '…">';
+      container.appendChild(row);
+    });
+  })();
+
+  window.copyComments = function() {
+    var parts = sections.map(function(s) {
+      var val = (document.getElementById('ci-' + s.id) || {}).value || '';
+      return val.trim() ? '[' + s.label + '] ' + val.trim() : null;
+    }).filter(Boolean);
+    if (!parts.length) {
+      document.getElementById('copy-feedback').textContent = 'Nothing to copy.';
       return;
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(textarea.value).then(function() {
-        status.textContent = 'Copied!';
-        setTimeout(function() { status.textContent = ''; }, 2000);
-      }).catch(function() {
-        fallbackCopy(textarea, status);
-      });
-    } else {
-      fallbackCopy(textarea, status);
-    }
+    navigator.clipboard.writeText(parts.join(' | ')).then(function() {
+      document.getElementById('copy-feedback').textContent = 'Copied to clipboard.';
+      setTimeout(function() {
+        document.getElementById('copy-feedback').textContent = '';
+      }, 2500);
+    });
   };
-
-  function fallbackCopy(textarea, status) {
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      status.textContent = 'Copied!';
-    } catch(e) {
-      status.textContent = 'Copy failed — select text manually';
-    }
-    setTimeout(function() { status.textContent = ''; }, 2000);
-  }
 
 })();
 </script>
