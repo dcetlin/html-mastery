@@ -1,172 +1,62 @@
 ---
 name: html
-description: Produce and maintain rich interactive HTML documents. Use when creating new HTML artifacts, editing existing large HTML files (500+ lines), building SVG diagrams, or rendering HTML to PNG. Triggers on "create an HTML doc", "update the HTML", "fix the HTML", "add a section", "build a diagram", "render to PNG", or when working with any self-contained HTML artifact.
+description: Produce and maintain rich interactive HTML documents. Triggers on creating, editing, or rendering self-contained HTML artifacts. Covers design system, 28 components, SVG conventions, and production methodology for files up to 4,000+ lines.
 ---
 
 # HTML Document Skill
 
-This skill provides operational discipline for producing and maintaining self-contained HTML artifacts. It detects what you're about to do and loads the relevant methodology.
+Operational guide for producing and maintaining self-contained HTML artifacts using the html-mastery spec.
 
-**The full design system and conventions live in `STANDARD.md` in the html-mastery repo.** This skill assumes STANDARD.md is available as ambient context (via CLAUDE.md reference or similar). If it's not loaded, read it first.
+**Read `STANDARD.md` first.** This skill routes you to the right section — it does not duplicate the spec.
 
----
+## Quick Reference
 
-## Detect the moment
+| You want to... | Read | Tool |
+|----------------|------|------|
+| Create a new artifact | §2 (artifact classes), §8 (skeletons) | Copy a skeleton, never start blank |
+| Edit a large file (500+ lines) | §6.1 (workflows by scale) | `html-tool.sh extract/replace` |
+| Add a section with CSS+HTML+JS | §6.3 (injection scripts) | Python three-point injection |
+| Make bulk mechanical changes | §6.3 (transform scripts) | Python with `replace_once()` |
+| Build an SVG diagram | §5 (SVG conventions) | Hand-crafted inline SVG |
+| Render HTML to PNG | §7 (Chromium pipeline) | `chromium --headless` |
+| Validate structure | §6.2 (validation) | `python3 tools/validate.py <file>` |
 
-Before acting, identify which mode applies:
+## Setup
 
-| Signal | Mode | What to load |
-|--------|------|-------------|
-| No HTML file exists yet | **Create** | Design system, artifact class selection, gallery as reference |
-| HTML file exists, < 500 lines | **Edit (small)** | Direct editing is safe. Validate after. |
-| HTML file exists, 500+ lines | **Edit (large)** | Section-based workflow. NEVER full-file rewrite. |
-| Need a diagram or visual | **Diagram** | SVG conventions, Chromium pipeline |
-| Need to render HTML to PNG | **Render** | Chromium headless command |
-
----
-
-## Mode: Create
-
-1. Decide artifact class: **Document-class** (reports, design docs, decisions, audits), **Dashboard-class** (data dashboards, monitoring, interactive tools), or **Presentation-class** (slide-based storyboards, journey walkthroughs, experience comparisons).
-2. Start from the gallery example or the skeleton in STANDARD.md §8. Never start from a blank file.
-3. Include all required features for the class:
-   - Document-class: light/dark toggle, taxonomic section IDs, comment widget, version metadata
-   - Dashboard-class: light/dark toggle (if readable sections), filter bar, status badges
-   - Presentation-class: track tabs, slide navigation with step dots, keyboard nav (arrow keys), full-viewport slides, version metadata
-4. Use the full color token system (dark-first).
-5. Validate the output: `python3 tools/validate.py <file>`
-
----
-
-## Environment setup
-
-Before using `html-tool.sh`, set the target file:
 ```bash
 export HTML_TOOL_FILE=my-document.html
 ```
 
-The authoritative validator is `python3 tools/validate.py <file>` (three-pass: div balance + block elements + id closure). `html-tool.sh validate` delegates to it when Python is available.
+## The Rules
 
----
+1. **Validate after every edit.** `python3 tools/validate.py <file>`. Non-negotiable.
+2. **Never full-file rewrite** of 500+ line HTML. Extract → edit → replace.
+3. **Substance → markdown first.** Presentation → HTML directly. (§6.5)
+4. **Dark mode is the default.** Light mode is the override. (§1.1)
+5. **Prefix SVG marker IDs** per diagram to avoid collision. (§5.1)
 
-## Mode: Edit (large file, 500+ lines)
+## Artifact Classes
 
-This is the critical mode. Most failures happen here.
+- **Document-class** — reports, design docs, decisions, audits. Required: toggle, section IDs, comment widget, version meta.
+- **Dashboard-class** — data dashboards, monitoring tools. Required: toggle, filter bar, status badges.
+- **Presentation-class** — slide-based storyboards, journey walkthroughs. Required: track tabs, slide nav, keyboard arrows, full-viewport.
 
-### The workflow
+## Anti-Patterns (memorize these)
 
-```
-extract section → edit in isolation → replace → validate → repeat
-```
+- Subagent full-file rewrite of 1500+ lines → truncation, silent drops
+- Edit tool on large HTML with entities → match failures
+- Mixing structural + semantic changes in one pass → both degraded
+- Reorganizing a large file → untraceable full-file diff
+- Consolidating "duplicate" CSS → subtle breakage
+- Reformatting whitespace → enormous noise diffs
 
-1. **Discover structure:** `html-tool.sh sections` to see all IDs and line ranges.
-2. **Extract the target section:** `html-tool.sh extract <section-id> > /tmp/section.html`
-3. **Edit the extracted section** (small, focused file — safe for LLM editing).
-4. **Replace:** `html-tool.sh replace <section-id> /tmp/section.html`
-5. **Validate:** `python3 tools/validate.py <file>` — **non-negotiable after every edit.**
-6. **If validation fails, fix before proceeding.** Cascading div errors compound.
+See §6.4 for all 10 + the Append-Only Discipline.
 
-### For mechanical changes (CSS injection, class renaming, bulk updates)
+## Operator Patterns (for intensive sessions)
 
-Write a Python transform script. Don't use LLM subagents for pattern-based changes.
-
-```python
-#!/usr/bin/env python3
-import re, sys
-
-def transform(html):
-    # pattern-based changes here
-    return html
-
-html = open(sys.argv[1]).read()
-html = transform(html)
-open(sys.argv[2], 'w').write(html)
-
-# Always validate after
-from validate import validate_html
-issues, stats = validate_html(sys.argv[2])
-if issues:
-    print(f"WARNING: {len(issues)} issues")
-    for i in issues: print(f"  {i}")
-```
-
-### What does NOT work
-
-**Subagent full-file rewrites of 1500+ line HTML.** The API has output limits. A subagent tasked with rewriting a large HTML file will hit those limits, produce truncated output, or silently drop sections. The failure mode is insidious: the subagent reports success, but the output is incomplete.
-
-**The Edit tool on large HTML files.** String matching breaks with encoded characters (`&amp;`, `&#8212;`, smart quotes). A single character mismatch in a 200-character `old_string` causes the edit to fail silently or match the wrong location.
-
-**Mixing structural and content changes in one pass.** CSS injection, div wrapping, and class renaming are mechanical transforms. Content edits (rewriting prose, updating data) require understanding context. Separate them: transforms first, content edits second.
-
----
-
-## Mode: Diagram
-
-### Inline SVG flow diagrams
-
-Hand-crafted SVG, no external libraries. Use the 4-role color system from STANDARD.md.
-
-Key conventions:
-- Box specs: ~120-160px wide, ~70px tall, rx="10", stroke-width="1.5"
-- Two text lines: title (12.5px, weight 600) + subtitle (10px)
-- Arrows: `<line>` with `marker-end`. Prefix all marker IDs with a unique name to avoid collisions.
-- All connectors horizontal or L-shaped elbows. No diagonals.
-- Zone labels below the diagram.
-
-### Architecture annotation
-
-Core principle: **annotate architecture, not fields.** One annotation that reveals a design decision is worth more than six that label individual fields.
-
----
-
-## Mode: Render (HTML to PNG)
-
-```bash
-chromium --headless \
-  --screenshot="/absolute/path/output.png" \
-  --window-size=1400,700 \
-  --force-device-scale-factor=2 \
-  "file:///absolute/path/diagram.html"
-```
-
-- `--force-device-scale-factor=2` for retina quality
-- Always use absolute paths with `file://` protocol
-- For macOS: `/opt/homebrew/bin/chromium`
-
----
-
-## Advanced operator patterns (STANDARD.md §6.9)
-
-For intensive editing sessions (10+ edits), these patterns prevent corruption:
-
-- **`replace_once(html, old, new, label)`** — validates exactly one match before replacing. Use in Python transform scripts instead of bare `str.replace()`. See §6.9 for the helper function.
-- **Bottom-up editing** — when making multiple interactive edits, work from highest line numbers first so earlier targets stay stable.
-- **Factual claim sweep** — after changing any fact (price, status, name), `grep -n "old_value"` to find all echoes. Update every instance.
-- **Card layer synchronization** — when changing a card's status, update all 4 layers: CSS class, badge, info box, SVG annotations.
-- **`.bak` recovery** — `html-tool.sh replace` creates `.bak` files. If validation fails: restore from `.bak`, don't fix forward.
-- **Pre-publish sweep** — validate + grep for stale claims + version check + card sync + browser preview (both themes) + interactive feature check.
-
----
-
-## Canon authority (for projects with markdown + HTML)
-
-When a project maintains both markdown docs and HTML artifacts:
-
-- **Substance** (reasoning, analysis, decisions) → edit markdown first, propagate to HTML
-- **Presentation** (layout, styling, interactivity) → edit HTML directly
-- **Structured reference** (tables of settled facts) → edit HTML directly, extractable via tooling
-
-The test: "Is this substance or presentation?" Substance always gets a markdown home.
-
----
-
-## Checklist (before publishing any artifact)
-
-- [ ] Dark/light palette tokens applied
-- [ ] Light mode uses higher-contrast accent values
-- [ ] Version meta tags present
-- [ ] Section IDs are taxonomic (§1, §2, §1.1)
-- [ ] Document-class: comment widget present, sections[] matches actual sections
-- [ ] All JS inline; no external CSS
-- [ ] Structural validation passes (0 issues)
-- [ ] Opened in browser and visually verified
+- **`replace_once()`** — validate exactly one match before replacing (§6.9)
+- **Bottom-up editing** — highest line numbers first when making multiple edits
+- **Factual claim sweep** — `grep -n "old_value"` after changing any fact
+- **Card sync** — CSS class + badge + info box + SVG must all agree
+- **`.bak` recovery** — restore from backup, don't fix forward
+- **Pre-publish sweep** — validate + grep + version check + both themes + interactivity
