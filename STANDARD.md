@@ -2235,6 +2235,32 @@ After all edits are complete and before the artifact is shared, delivered, or co
 
 **Rule:** No artifact ships without completing all six steps. Steps 1-3 are mechanical and fast. Steps 4-6 require visual inspection and cannot be automated away. If time pressure tempts you to skip steps 5-6, that is precisely when visual regressions are most likely — the edits were rushed, and rushed edits are the ones that break themes and interactions.
 
+### 6.10 Parallel Editing
+
+Single-file HTML artifacts are structurally hostile to concurrent editing. The CSS is global state. The JS is global state. The div nesting is a single tree. There is no natural partition boundary that git merge or any automated tool can exploit. The file format is the constraint.
+
+**The correct pattern: parallelize the thinking, serialize the writing.**
+
+Dispatch multiple subagents or sessions to research, analyze, and draft content in parallel — they return findings as text, structured data, or markdown. One orchestrator session synthesizes and makes all edits to the HTML file. The editing itself is fast (transform scripts handle 40+ replacements in seconds). The bottleneck is research and analysis, not writing.
+
+```
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│ Research  │  │ Research  │  │ Research  │   ← parallel (no file access)
+│ Agent A   │  │ Agent B   │  │ Agent C   │
+└────┬──────┘  └────┬──────┘  └────┬──────┘
+     │ text         │ text         │ text
+     └──────────────┼──────────────┘
+                    ▼
+            ┌──────────────┐
+            │ Orchestrator │   ← serial (sole writer)
+            │ synthesizes  │
+            │ + edits HTML │
+            └──────────────┘
+```
+
+**Why not concurrent file editing?** Git worktrees with a merge synthesizer is possible but unreliable — git merge on a single large HTML file is line-based, and HTML doesn't merge well. Two agents adding CSS at the same anchor, or editing adjacent table rows, produce conflicts that take longer to resolve than to just serialize the edits. You pay the cost of parallelism without getting the benefit.
+
+**When you are tempted to have multiple sessions edit the file simultaneously,** reframe: can the sessions produce their changes as structured input (a list of replacements, a section of HTML to inject, a data table to fill) that one editor session applies? Almost always yes.
 
 ## 7. Rendering Pipeline
 
