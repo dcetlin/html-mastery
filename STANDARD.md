@@ -2262,6 +2262,8 @@ Dispatch multiple subagents or sessions to research, analyze, and draft content 
 
 **When you are tempted to have multiple sessions edit the file simultaneously,** reframe: can the sessions produce their changes as structured input (a list of replacements, a section of HTML to inject, a data table to fill) that one editor session applies? Almost always yes.
 
+**Open area:** True concurrent editing — multiple writers modifying different sections of the same file simultaneously with automatic conflict resolution — is an unsolved problem for monolithic HTML. Section-level locking, file decomposition, and git-based merging are all possible approaches with significant tradeoffs. If your workflow demands concurrent writers (not just concurrent researchers), this needs purpose-built tooling beyond what this spec provides today.
+
 ## 7. Rendering Pipeline
 
 For generating PNG output from HTML artifacts (diagrams, screenshots, visual artifacts).
